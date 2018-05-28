@@ -21,10 +21,10 @@
     <ClCompile Include="TypeSys.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="codegen.cpp">
+    <ClCompile Include="ast.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="ast.cpp">
+    <ClCompile Include="codegen.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -38,5 +38,8 @@
     <ClInclude Include="codegen.h">
       <Filter>头文件</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

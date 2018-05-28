@@ -39,6 +39,7 @@ namespace sgs_backend {
 		INTEGER, // int
 		FRACTION, // double
 		BOOLEAN, // bool
+		CHAR, // char
 	};
 
 	class SBasicType : public SType {
@@ -51,9 +52,12 @@ namespace sgs_backend {
 				return Type::getInt32Ty(context);
 			} else if (type == BasicType::FRACTION) {
 				return Type::getFloatTy(context);
-			} else {
+			} else if (type == BasicType::CHAR){
+				return Type::getInt8Ty(context);
+			} else if (type == BasicType::BOOLEAN) { 
 				return Type::getInt1Ty(context);
 			}
+			return nullptr;
 		}
 	};
 
@@ -67,6 +71,10 @@ namespace sgs_backend {
 
 	inline SBasicType* createBoolType() {
 		return new SBasicType(BasicType::BOOLEAN);
+	}
+
+	inline SBasicType* createCharType() {
+		return new SBasicType(BasicType::CHAR);
 	}
 
 	class SArrayType : public SType {
@@ -116,7 +124,7 @@ namespace sgs_backend {
 			return nullptr;
 		}
 		Value* find(const string& str) {
-			return this->operator[](str);
+			return operator[](str);
 		}
 		map<string, Value*>& getBindings() {
 			return bindings;

@@ -6,6 +6,8 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/IRBuilder.h>
+#include <iostream>
+#include <llvm/Support/raw_ostream.h>
 
 
 namespace sgs_backend {
@@ -15,11 +17,17 @@ namespace sgs_backend {
 	static LLVMContext theContext;
 	static Module* theModule;
 	static IRBuilder<> builder(theContext);
+	static string builtInFuncs;
+
+	// static map<string, Function*> builtinFunctions;
+
+	void builtinFuncInit();
 
 	void codegenInit();
 	Value* exprCodegen(Expression* exp, Environment* env);
 	Value* stmtCodegen(Statement* stmt, Environment* env, BasicBlock* cont, BasicBlock* bk);
 	Value* codegen(AST* ast);
 
+	void totalTranslation(const Context& cont);
 
 }

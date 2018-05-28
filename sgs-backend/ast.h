@@ -17,6 +17,7 @@ namespace sgs_backend {
 	enum AST_TYPE {
 		AT_TYPEDEF,
 		// AT_EXP,
+		AT_GLBVARDEF,
 		AT_STMT,
 		AT_FUNC,
 		AT_PROTO
@@ -76,9 +77,8 @@ namespace sgs_backend {
 		BINOP op;
 		Expression *left, *right;
 	public:
-		BinopExp(BINOP op, SType* tp) : Expression(ET_BINOP, tp), op(op), left(nullptr), right(nullptr) {}
-		void setLeft(Expression *l) { left = l; }
-		void setRigth(Expression *r) { right = r; }
+		BinopExp(BINOP op, SType* tp, Expression* left, Expression* right) : 
+			Expression(ET_BINOP, tp), op(op), left(left), right(right) {}
 		Expression *getLeft() const { return left; }
 		Expression *getRigth() const { return right; }
 		BINOP getOp() const { return op; }
@@ -124,15 +124,15 @@ namespace sgs_backend {
 	// 	string getValue() const { return value; }
 	// };
 
-	inline LiteralExp* get_literal(int value = 0) {
+	inline LiteralExp* getLiteral(int value = 0) {
 		return new IntLiteral(value);
 	}
 
-	inline LiteralExp* get_literal(bool value = false) {
+	inline LiteralExp* getLiteral(bool value = false) {
 		return new BoolLiteral(value);
 	}
 
-	inline LiteralExp* get_literal(double value = 0.0) {
+	inline LiteralExp* getLiteral(double value = 0.0) {
 		return new FloatLiteral(value);
 	}
 
@@ -180,7 +180,6 @@ namespace sgs_backend {
 	};
 
 	class Statement : public AST {
-	private:
 		STMT_TYPE stmtType;
 	public:
 		explicit Statement(STMT_TYPE t) : AST(AT_STMT), stmtType(t) {}
@@ -195,7 +194,6 @@ namespace sgs_backend {
 	};
 
 	class AssignStmt : public Statement {
-	private:
 		Expression * left, *right;
 	public:
 		AssignStmt(Expression* left, Expression* right) : Statement(ST_ASSIGN), left(left), right(right) {}
@@ -204,13 +202,27 @@ namespace sgs_backend {
 	};
 
 	class BlockStmt : public Statement {
-	private:
 		vector<Statement *> content;
-		Environment* env;
 	public:
-		BlockStmt(Environment* env) : Statement(ST_BLOCK), env(env) {}
+		BlockStmt(vector<Statement*> content) : Statement(ST_BLOCK), content(std::move(content)) {}
 		const vector<Statement *>& getContent() const { return content; }
-		Environment* getEnv() const { return env; }
+	};
+
+	class GlobalVarDef : public AST {
+		string name;
+		SType* type;
+		LiteralExp* initValue;
+
+	public:
+		GlobalVarDef(string name, SType* type, LiteralExp* initValue = nullptr)
+			: AST(AT_GLBVARDEF),
+			  name(std::move(name)),
+			  type(type),
+			  initValue(initValue) {}
+
+		string getName() const { return name; }
+		SType* getType() const { return type; }
+		LiteralExp* getInitValue() const { return initValue; }
 	};
 
 	class FuncProto : public AST {
@@ -219,10 +231,23 @@ namespace sgs_backend {
 		string name;
 		vector <std::pair<SType *, string>> paramList;
 	public:
-		FuncProto(SType *ret, string n) : AST(AT_PROTO), returnType(ret), name(std::move(n)) {}
+		FuncProto(SType *ret, string n, vector<pair<SType*, string>> paramList) : AST(AT_PROTO), returnType(ret), name(std::move(n)), paramList(std::move(paramList)) {}
 		void pushParam(SType *t, string n) {
 			paramList.emplace_back(t, n);
 		}
+		FunctionType* getLLVMType(LLVMContext& context) const {
+			vector<Type*> res;
+			for (const auto& x : paramList) {
+				Type* tp = x.first->toLLVMType(context);
+				if (x.first->getLevel() == Types::BASIC_TYPE) {
+					res.push_back(tp);
+				} else {
+					res.push_back(PointerType::get(tp, 0));
+				}
+			}
+			return FunctionType::get(returnType->toLLVMType(context), res, false);
+		}
+
 		SType *getReturnType() const { return returnType; };
 		string getName() const { return name; }
 		const vector <std::pair<SType *, string>>& getParam() const { return paramList; };
@@ -233,7 +258,7 @@ namespace sgs_backend {
 		FuncProto * proto;
 		BlockStmt* body;
 	public:
-		FuncDef(FuncProto* p) : AST(AT_FUNC), proto(p), body(nullptr) {}
+		FuncDef(FuncProto* p, BlockStmt* body) : AST(AT_FUNC), proto(p), body(body) {}
 		FuncProto *getProto() const { return proto; }
 		void setBody(BlockStmt *b) { body = b; }
 		BlockStmt *getBody() const { return body; }
@@ -296,8 +321,8 @@ namespace sgs_backend {
 		string name;
 	public:
 
-		VarDefStmt(STMT_TYPE t, SType* varType, Expression* initValue, string name)
-			: Statement(t),
+		VarDefStmt(SType* varType, Expression* initValue, string name)
+			: Statement(ST_VARDEF),
 			  initValue(initValue),
 			  varType(varType),
 			  name(std::move(name)) {}
@@ -324,7 +349,5 @@ namespace sgs_backend {
 		ContinueStmt() : Statement(ST_CONTINUE) {}
 	};
 
-	class Context {
-		// TODO
-	};
+	using Context = vector<AST*>;
 }

@@ -13,10 +13,13 @@
 #include <string>
 #include <vector>
 #include <iostream>
-// #include "AST.h"
+#include "ast.h"
+#include "TypeSys.h"
+#include "codegen.h"
 
 using std::vector;
 using namespace llvm;
+using namespace sgs_backend;
 
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
@@ -92,13 +95,56 @@ void temp() {
 	// TheModule.print(errs(), nullptr);
 }
 
+
+void simple() {
+	// builtinFuncInit();
+	/** C code : 
+	 *	int fucker(int a) {
+	 *		int b = 1;
+	 *		bool c = false;
+	 *		b = b + a;
+	 *		c = b > a;
+	 *		if (c) {
+	 *			b = 5;
+	 *		} else {
+	 *			b = 3;
+	 *		}
+	 *		return b;
+	 *	}
+	 */
+
+	Context code;
+	SType* intType = createIntType();
+	FuncProto* proto = 
+		new FuncProto(intType, "main", 
+			vector<pair<SType*, string>>({ std::make_pair(intType, string("a")) }));
+	vector<Statement*> stmts;
+	stmts.push_back(new VarDefStmt(createIntType(), getLiteral(1), "b"));
+	stmts.push_back(new VarDefStmt(createBoolType(), getLiteral(false), "c"));
+	auto b = new IdExp("b", createIntType());
+	auto c = new IdExp("c", createIntType());
+	auto a = new IdExp("a", createIntType());
+	stmts.push_back(new AssignStmt(b, new BinopExp(ADD, createIntType(), a, b)));
+	// stmts.push_back(new AssignStmt(c, new BinopExp(GT, createBoolType(), b, a)));
+	// Statement* t1 = new AssignStmt(b, getLiteral(5));
+	// Statement* t2 = new AssignStmt(b, getLiteral(3));
+	// stmts.push_back(new IfStmt(c, t1, t2));
+	stmts.push_back(new ExpStmt(new CallExp("printNum", { b }, createIntType())));
+	stmts.push_back(new ReturnStmt(b));
+	BlockStmt* body = new BlockStmt(stmts);
+	auto* funcDef = new FuncDef(proto, body);
+	// codegen(funcDef);
+	code.push_back(funcDef);
+	totalTranslation(code);
+}
+
 int main() {
 
-	// test();
-	temp();
-	int n;
+	simple();
+	// temp();
+	// int n;
 	// puts("hell world");
-	std::cin >> n;
+	// std::cin >> n;
 	// n = n + 1;
 	return 0;
 }
