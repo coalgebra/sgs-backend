@@ -11,11 +11,11 @@ void sgs_backend::builtinFuncInit() {
 	funcReference["charToInt"] = Function::Create(charToInt, GlobalValue::ExternalLinkage, "charToInt");
 
 	// intToFloat :: Int => Float
-	FunctionType* intToFloat = FunctionType::get(Type::getInt32Ty(theContext), {Type::getFloatTy(theContext)}, false);
-	funcReference["intToChar"] = Function::Create(intToFloat, GlobalValue::ExternalLinkage, "intToFloat");
+	FunctionType* intToFloat = FunctionType::get(Type::getFloatTy(theContext), {Type::getInt32Ty(theContext)}, false);
+	funcReference["intToFloat"] = Function::Create(intToFloat, GlobalValue::ExternalLinkage, "intToFloat");
 
 	// floatToInt :: Float => Int
-	FunctionType* floatToInt = FunctionType::get(Type::getFloatTy(theContext), {Type::getInt32Ty(theContext)}, false);
+	FunctionType* floatToInt = FunctionType::get(Type::getInt32Ty(theContext), {Type::getFloatTy(theContext)}, false);
 	funcReference["floatToInt"] = Function::Create(floatToInt, GlobalValue::ExternalLinkage, "floatToInt");
 
 	// intToChar :: Int => Char
@@ -30,6 +30,10 @@ void sgs_backend::builtinFuncInit() {
 	FunctionType* printNum = FunctionType::get(Type::getInt32Ty(theContext), {Type::getInt32Ty(theContext)}, false);
 	funcReference["printNum"] = Function::Create(printNum, GlobalValue::ExternalLinkage, "printNum");
 
+	// printFloat :: Float => ()
+	FunctionType* printFloat = FunctionType::get(Type::getInt32Ty(theContext), { Type::getFloatTy(theContext) }, false);
+	funcReference["printFloat"] = Function::Create(printFloat, GlobalValue::ExternalLinkage, "printFloat");
+
 	// readNum :: () => Int
 	FunctionType* readNum = FunctionType::get(Type::getInt32Ty(theContext), false);
 	funcReference["readNum"] = Function::Create(readNum, GlobalValue::ExternalLinkage, "readNum");
@@ -41,11 +45,22 @@ void sgs_backend::builtinFuncInit() {
 	// readStr :: String => ()
 	FunctionType* readStr = FunctionType::get(Type::getInt32Ty(theContext), {Type::getInt8PtrTy(theContext)}, false);
 	funcReference["readStr"] = Function::Create(readStr, GlobalValue::ExternalLinkage, "readStr");
+
+	FunctionType* newline = FunctionType::get(Type::getInt32Ty(theContext), {}, false);
+	funcReference["newline"] = Function::Create(newline, GlobalValue::ExternalLinkage, "newline");
+
+	FunctionType* strcpy = FunctionType::get(Type::getInt8PtrTy(theContext), { Type::getInt8PtrTy(theContext) , Type::getInt8PtrTy(theContext) }, false);
+	funcReference["strcpy"] = Function::Create(strcpy, GlobalValue::ExternalLinkage, "strcpy");
+
 	builtInFuncs += "\n\
 @printNum.constStr = constant [3 x i8] c\"%d\\00\", align 1\n\
 @printStr.constStr = constant[3 x i8] c\"%s\\00\", align 1\n\
+@printFloat.constStr = constant[3 x i8] c\"%f\\00\", align 1\n\
 declare i32 @printf(i8*, ...)\n\
 declare i32 @scanf(i8*, ...)\n\
+declare i32 @putchar(i32)\n\
+declare i32 @getchar()\n\
+declare i8* @strcpy(i8*, i8*)\n\
 \n\
 define i8 @intToChar(i32) {\n\
 	%2 = trunc i32 %0 to i8\n\
@@ -84,6 +99,11 @@ define i32 @printNum(i32) {\n\
 	%2 = call i32(i8*, ...) @printf(i8* getelementptr inbounds([3 x i8], [3 x i8] * @printNum.constStr, i32 0, i32 0), i32 %0)\n\
 	ret i32 0\n\
 }\n\
+define i32 @printFloat(float) {\n\
+	%2 = fpext float %0 to double\n\
+	%3 = call i32(i8*, ...) @printf(i8* getelementptr inbounds([3 x i8], [3 x i8] * @printFloat.constStr, i32 0, i32 0), double %2)\n\
+	ret i32 0\n\
+}\n\
 \n\
 define i32 @printStr(i8*) {\n\
 	%2 = call i32(i8*, ...) @printf(i8* getelementptr inbounds([3 x i8], [3 x i8] * @printStr.constStr, i32 0, i32 0), i8* %0)\n\
@@ -96,18 +116,22 @@ define i32 @readNum() {\n\
 	%3 = load i32, i32* %1, align 4\n\
 	ret i32 %3\n\
 }\n\
+define i32 @newline() {\n\
+	call i32 @putchar(i32 10)\n\
+	ret i32 0\n\
+}\n\
 \n\
 define i32 @readStr(i8*)  {\n\
 	%2 = call i32(i8*, ...) @scanf(i8* getelementptr inbounds([3 x i8], [3 x i8] * @printStr.constStr, i32 0, i32 0), i8* %0)\n\
 	ret i32 0\n\
-}";
+}\n";
 }
 
 void sgs_backend::codegenInit() {
 	typeReference.clear();
 	funcReference.clear();
 	delete theModule;
-
+	globalEnv = Environment::derive(nullptr);
 	theModule = new Module("wtf", theContext);
 }
 
@@ -127,7 +151,6 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 		if (rhs->getType()->isPointerTy()) {
 			rhs = builder.CreateLoad(rhs, "load.val");
 		}
-
 		switch (bexp->getOp()) {
 		case AND:
 			return builder.CreateAnd(lhs, rhs, "and.res");
@@ -137,7 +160,14 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			if (lhs->getType()->isFloatTy() && rhs->getType()->isFloatTy()) {
 				return builder.CreateFAdd(lhs, rhs, "fadd.res");
 			}
-			if (lhs->getType()->isIntegerTy(32) && rhs->getType()->isIntegerTy(32)) {
+			if (lhs->getType()->isIntegerTy()) {
+				const auto tl = dyn_cast<IntegerType>(lhs->getType());
+				const auto tr = dyn_cast<IntegerType>(rhs->getType());
+				if (tl->getBitWidth() < tr->getBitWidth()) {
+					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
+				} else if (tl->getBitWidth() > tr->getBitWidth()) {
+					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+				}
 				return builder.CreateAdd(lhs, rhs, "add.res");
 			}
 			return nullptr;
@@ -145,7 +175,14 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			if (lhs->getType()->isFloatTy()) {
 				return builder.CreateFSub(lhs, rhs, "fsub.res");
 			}
-			if (lhs->getType()->isIntegerTy(32)) {
+			if (lhs->getType()->isIntegerTy()) {
+				const auto tl = dyn_cast<IntegerType>(lhs->getType());
+				const auto tr = dyn_cast<IntegerType>(rhs->getType());
+				if (tl->getBitWidth() < tr->getBitWidth()) {
+					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
+				} else if (tl->getBitWidth() > tr->getBitWidth()) {
+					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+				}
 				return builder.CreateSub(lhs, rhs, "sub.res");
 			}
 			return nullptr;
@@ -153,7 +190,14 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			if (lhs->getType()->isFloatTy() && rhs->getType()->isFloatTy()) {
 				return builder.CreateFMul(lhs, rhs, "fmul.res");
 			}
-			if (lhs->getType()->isIntegerTy(32) && rhs->getType()->isIntegerTy(32)) {
+			if (lhs->getType()->isIntegerTy()) {
+				const auto tl = dyn_cast<IntegerType>(lhs->getType());
+				const auto tr = dyn_cast<IntegerType>(rhs->getType());
+				if (tl->getBitWidth() < tr->getBitWidth()) {
+					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
+				} else if (tl->getBitWidth() > tr->getBitWidth()) {
+					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+				}
 				return builder.CreateMul(lhs, rhs, "mul.res");
 			}
 			return nullptr;
@@ -161,7 +205,14 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			if (lhs->getType()->isFloatTy() && rhs->getType()->isFloatTy()) {
 				return builder.CreateFDiv(lhs, rhs, "fdiv.res");
 			}
-			if (lhs->getType()->isIntegerTy(32) && rhs->getType()->isIntegerTy(32)) {
+			if (lhs->getType()->isIntegerTy()) {
+				const auto tl = dyn_cast<IntegerType>(lhs->getType());
+				const auto tr = dyn_cast<IntegerType>(rhs->getType());
+				if (tl->getBitWidth() < tr->getBitWidth()) {
+					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
+				} else if (tl->getBitWidth() > tr->getBitWidth()) {
+					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+				}
 				return builder.CreateExactSDiv(lhs, rhs, "div.res");
 			}
 			return nullptr;
@@ -169,7 +220,14 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			if (lhs->getType()->isFloatTy() && rhs->getType()->isFloatTy()) {
 				return builder.CreateFCmp(CmpInst::Predicate::FCMP_OGT, lhs, rhs, "fgt.res");
 			}
-			if (lhs->getType()->isIntegerTy(32) && rhs->getType()->isIntegerTy(32)) {
+			if (lhs->getType()->isIntegerTy()) {
+				const auto tl = dyn_cast<IntegerType>(lhs->getType());
+				const auto tr = dyn_cast<IntegerType>(rhs->getType());
+				if (tl->getBitWidth() < tr->getBitWidth()) {
+					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
+				} else if (tl->getBitWidth() > tr->getBitWidth()) {
+					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+				}
 				return builder.CreateICmp(CmpInst::Predicate::ICMP_SGT, lhs, rhs, "gt.res");
 			}
 			return nullptr;
@@ -177,7 +235,14 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			if (lhs->getType()->isFloatTy() && rhs->getType()->isFloatTy()) {
 				return builder.CreateFCmp(CmpInst::Predicate::FCMP_OLT, lhs, rhs, "flt.res");
 			}
-			if (lhs->getType()->isIntegerTy(32) && rhs->getType()->isIntegerTy(32)) {
+			if (lhs->getType()->isIntegerTy()) {
+				const auto tl = dyn_cast<IntegerType>(lhs->getType());
+				const auto tr = dyn_cast<IntegerType>(rhs->getType());
+				if (tl->getBitWidth() < tr->getBitWidth()) {
+					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
+				} else if (tl->getBitWidth() > tr->getBitWidth()) {
+					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+				}
 				return builder.CreateICmp(CmpInst::Predicate::ICMP_SLT, lhs, rhs, "lt.res");
 			}
 			return nullptr;
@@ -214,19 +279,14 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 	}
 	case ET_VISIT: {
 		const auto visitexp = dynamic_cast<VisitExp*>(exp);
-		Value* array = exprCodegen(visitexp->getArray(), env);
+		Value* array = exprCodegen(visitexp->getArray(), env); // int **
 		Value* index = exprCodegen(visitexp->getIndex(), env);
 		if (index->getType()->isPointerTy()) {
 			index = builder.CreateLoad(index, "load");
 		}
-		if (index->getType()->isIntegerTy(1)) {
-			index = builder.CreateIntCast(index, Type::getInt32Ty(theContext), true, "icast");
-			return builder.CreateInBoundsGEP(
-				array, vector<Value*>({Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)), index}), "visit");
-		}
 		if (index->getType()->isIntegerTy(32)) {
-			return builder.CreateInBoundsGEP(
-				array, vector<Value*>({Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)), index}), "visit");
+			array = builder.CreateLoad(array, "array.load");
+			return builder.CreateInBoundsGEP(array, {index}, "visit");
 		}
 		return nullptr;
 	}  
@@ -236,9 +296,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 		vector<Value*> params;
 		for (auto&& x : callexp->getParam()) {
 			auto temp = exprCodegen(x, env);
-			if (!temp->getType()->isPointerTy() || x->getResType()->getLevel() != Types::BASIC_TYPE) {
-				// do nothing here
-			} else {
+			if (temp->getType()->isPointerTy()) {
 				temp = builder.CreateLoad(temp, "load");
 			}
 			params.push_back(temp);
@@ -271,8 +329,30 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 
 Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* cont, BasicBlock* bk) {
 	switch (stmt->getStmtType()) {
-	case ST_ASSIGN: {
+	case ST_ASSIGN:
+	{
 		const auto ass = dynamic_cast<AssignStmt*>(stmt);
+
+		if (ass->getRigth()->getExpType() == ET_CONSTR) { // deal with string assignment seperately
+			Value* lhs = exprCodegen(ass->getLeft(), env);
+			string conStr = dynamic_cast<ConstString*>(ass->getRigth())->getStr();
+			Type* strType = ArrayType::get(Type::getInt8Ty(theContext), conStr.length() + 1);
+			Constant* constStr = ConstantDataArray::getString(theContext, conStr);
+			GlobalVariable* constStrv = new GlobalVariable(
+				*theModule,
+				strType,
+				true,
+				GlobalValue::PrivateLinkage,
+				constStr,
+				conStr + ".str"
+				);
+			Value* strPtr = builder.CreateLoad(lhs, "str.ptr");
+			Value* conStrPtr = builder.CreateInBoundsGEP(constStrv,
+				{ Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) ,Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) },
+				"const.str.ptr");
+			return builder.CreateCall(funcReference["strcpy"], { strPtr, conStrPtr });
+		}
+		
 		Value* lhs = exprCodegen(ass->getLeft(), env);
 		Value* rhs = exprCodegen(ass->getRigth(), env);
 		if (rhs->getType()->isPointerTy()) {
@@ -282,7 +362,22 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 			std::cerr << "Translation error : at AssignStmt" << std::endl;
 			return nullptr;
 		}
-		return builder.CreateStore(rhs, lhs);
+		Type* type = dyn_cast<PointerType>(lhs->getType())->getElementType();
+		if (type->isIntegerTy() && rhs->getType()->isIntegerTy()) {
+			IntegerType* tr = dyn_cast<IntegerType>(rhs->getType());
+			IntegerType* tl = dyn_cast<IntegerType>(type);
+			if (tr->getBitWidth() < tl->getBitWidth()) { // need sext
+				rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+			} else if (tr->getBitWidth() > tl->getBitWidth()) { // need trunc
+				rhs = builder.CreateTrunc(rhs, tl, "trunc.temp");
+			}
+			return builder.CreateStore(rhs, lhs);
+		}
+		if (type == rhs->getType()) {
+			// ptrType
+			return builder.CreateStore(rhs, lhs);
+		}
+		return nullptr;
 	}
 	case ST_IF: {
 		Function* fun = builder.GetInsertBlock()->getParent();
@@ -370,7 +465,16 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 	case ST_VARDEF: {
 		const auto vardef = dynamic_cast<VarDefStmt*>(stmt);
 		Value* res = builder.CreateAlloca(vardef->getVarType()->toLLVMType(theContext), nullptr, vardef->getName());
-		env->getBindings()[vardef->getName()] = res;
+		Type* type = vardef->getVarType()->toLLVMType(theContext);
+		if (type->isArrayTy()) { // we shall use the array type with its element pointer
+			const auto* atype = dyn_cast<ArrayType>(type);
+			Value* res2 = builder.CreateAlloca(PointerType::get(atype->getElementType(), 0), nullptr, vardef->getName() + ".ptr");
+			res = builder.CreateInBoundsGEP(res, { Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) });
+			builder.CreateStore(res, res2);
+			res = res2;
+		}
+		env->insert(vardef->getName(), res);
 		if (vardef->getInitValue()) {
 			builder.CreateStore(exprCodegen(vardef->getInitValue(), env), res);
 		}
@@ -391,7 +495,7 @@ Value* sgs_backend::codegen(AST* ast) {
 		return nullptr;
 	}
 	case AT_STMT:
-		return stmtCodegen(dynamic_cast<Statement*>(ast), nullptr, nullptr, nullptr);
+		return stmtCodegen(dynamic_cast<Statement*>(ast), Environment::derive(globalEnv), nullptr, nullptr);
 	case AT_FUNC:
 	{
 		const auto funDef = dynamic_cast<FuncDef*>(ast);
@@ -400,11 +504,11 @@ Value* sgs_backend::codegen(AST* ast) {
 		funcReference[funDef->getProto()->getName()] = fun;
 		BasicBlock* funBB = BasicBlock::Create(theContext, "entry", fun);
 		builder.SetInsertPoint(funBB);
-		auto* env = Environment::derive(nullptr);
+		auto* env = Environment::derive(globalEnv);
 		auto iter = fun->args().begin();
 		for (const auto& x : funDef->getProto()->getParam()) {
 			const auto temp = builder.CreateAlloca(iter->getType(), 0, nullptr, x.second);
-			env->getBindings()[x.second] = temp;
+			env->insert(x.second, temp);
 			builder.CreateStore(iter, temp);
 			iter++;
 		}
@@ -416,17 +520,87 @@ Value* sgs_backend::codegen(AST* ast) {
 		FunctionType* funTy = funProto->getLLVMType(theContext);
 		return Function::Create(funTy, GlobalValue::CommonLinkage, funProto->getName(), theModule);
 	}
+	case AT_GLBVARDEF: {
+		const auto glbVarDef = dynamic_cast<GlobalVarDef*>(ast);
+		auto* tp = glbVarDef->getType();
+		if (tp->getLevel() == Types::BASIC_TYPE) {
+			switch (dynamic_cast<SBasicType*>(tp)->getBasicType()) {
+			case BasicType::INTEGER: {
+				auto temp = new GlobalVariable(
+					*theModule,
+					Type::getInt32Ty(theContext), 
+					false, 
+					GlobalValue::CommonLinkage,
+					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)), 
+					glbVarDef->getName());
+				// globalEnv->insert(glbVarDef->getName(), temp);
+				globalEnv->getBindings()[glbVarDef->getName()] = temp;
+				return temp;
+			}
+			case BasicType::FRACTION: {
+				auto temp = new GlobalVariable(*theModule,
+					Type::getFloatTy(theContext), false, GlobalValue::CommonLinkage,
+					ConstantFP::get(Type::getFloatTy(theContext), 0.0), glbVarDef->getName());
+				globalEnv->insert(glbVarDef->getName(), temp);
+				return temp;
+			}
+			case BasicType::BOOLEAN: {
+				return globalEnv->getBindings()[glbVarDef->getName()] = new GlobalVariable(*theModule,
+					Type::getInt1Ty(theContext), false, GlobalValue::CommonLinkage,
+					Constant::getIntegerValue(Type::getInt1Ty(theContext), APInt(1, 0)), glbVarDef->getName());
+			}
+			case BasicType::CHAR: {
+				return globalEnv->getBindings()[glbVarDef->getName()] = new GlobalVariable(*theModule,
+					Type::getInt8Ty(theContext), false, GlobalValue::CommonLinkage,
+					Constant::getIntegerValue(Type::getInt8Ty(theContext), APInt(8, 0)), glbVarDef->getName());
+			}
+			default: 
+				std::cerr << "What the fuck???" << std::endl;
+			} 
+		} else if (tp->getLevel() == Types::ARRAY_TYPE){ // complex type global variable definition
+
+			const auto aryTp = dynamic_cast<SArrayType*>(tp);
+
+			Constant* res = new GlobalVariable(
+				*theModule,
+				aryTp->toLLVMType(theContext), 
+				false, 
+				GlobalValue::CommonLinkage,
+				ConstantAggregateZero::get(aryTp->toLLVMType(theContext)), 
+				glbVarDef->getName() + ".array");
+
+			Constant* get = ConstantExpr::getInBoundsGetElementPtr(
+				aryTp->toLLVMType(theContext),
+				res, vector<Constant*>({
+					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) ,
+					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0))
+					}));
+			
+			auto temp = new GlobalVariable(
+				*theModule,
+				aryTp->getElementType()->toLLVMType(theContext)->getPointerTo(0),
+				false, 
+				GlobalValue::InternalLinkage, 
+				get, 
+				glbVarDef->getName());
+			return globalEnv->getBindings()[glbVarDef->getName()] = temp;
+		} else {
+			const auto tTp = dynamic_cast<STupleType*>(tp);
+			return globalEnv->getBindings()[glbVarDef->getName()] = new GlobalVariable(tTp->toLLVMType(theContext), false, GlobalValue::CommonLinkage,
+				ConstantAggregateZero::get(tTp->toLLVMType(theContext)), glbVarDef->getName());
+		}
+	}
 	default: ;
 	}
 	return nullptr;
 }
 
-void sgs_backend::totalTranslation(const Context& cont) {
+void sgs_backend::totalTranslation(const Context& cont, const string& filename) {
 	codegenInit();
 	builtinFuncInit();
 	for (const auto& x : cont) codegen(x);
 	std::error_code ec;
-	raw_fd_ostream stream("out.ll", ec, sys::fs::OpenFlags());
+	raw_fd_ostream stream(filename, ec, sys::fs::OpenFlags());
 	stream << builtInFuncs; 
 	theModule->print(stream, nullptr);
 }

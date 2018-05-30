@@ -18,6 +18,7 @@ namespace sgs_backend {
 	static Module* theModule;
 	static IRBuilder<> builder(theContext);
 	static string builtInFuncs;
+	static Environment* globalEnv;
 
 	// static map<string, Function*> builtinFunctions;
 
@@ -28,6 +29,6 @@ namespace sgs_backend {
 	Value* stmtCodegen(Statement* stmt, Environment* env, BasicBlock* cont, BasicBlock* bk);
 	Value* codegen(AST* ast);
 
-	void totalTranslation(const Context& cont);
+	void totalTranslation(const Context& cont, const string& filename);
 
 }

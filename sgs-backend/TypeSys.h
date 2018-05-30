@@ -129,6 +129,13 @@ namespace sgs_backend {
 		map<string, Value*>& getBindings() {
 			return bindings;
 		}
+		
+		void insert(const string& str, Value* val) {
+			// bindings[str] = val;
+			bindings[str] = val;
+			// bindings.insert_or_assign(str, val);
+		}
+
 		static Environment* derive(Environment* env) {
 			return new Environment(env);
 		}
@@ -137,5 +144,7 @@ namespace sgs_backend {
 	// typedef SType* TypeObj;
 
 	bool sameType(SType* t1, SType* t2);
+
+	Type* getParamType(SType* t, LLVMContext& context);
 
 }

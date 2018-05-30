@@ -14,7 +14,7 @@ namespace sgs_backend {
 		{
 			const auto ap = dynamic_cast<SArrayType*>(t1);
 			const auto ap2 = dynamic_cast<SArrayType*>(t2);
-			return ap->getCount() == ap2->getCount() && sameType(ap->getElementType(), ap2->getElementType());
+			return sameType(ap->getElementType(), ap2->getElementType());
 		}
 		case Types::TUPLE_TYPE:
 		{
@@ -31,5 +31,15 @@ namespace sgs_backend {
 		default:
 			return false;
 		}
+	}
+
+	Type* getParamType(SType* t, LLVMContext& context) {
+		if (t->getLevel() == Types::BASIC_TYPE) {
+			return t->toLLVMType(context);
+		}
+		if (t->getLevel() == Types::ARRAY_TYPE) {
+			return PointerType::get(getParamType(dynamic_cast<SArrayType*>(t)->getElementType(), context), 0);
+		}
+		return PointerType::get(t->toLLVMType(context), 0);
 	}
 }

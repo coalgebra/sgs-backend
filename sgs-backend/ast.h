@@ -7,6 +7,7 @@
 #include <string>
 #include "TypeSys.h"
 #include <map>
+#include <llvm/IR/GlobalValue.h>
 
 namespace sgs_backend {
 
@@ -46,7 +47,9 @@ namespace sgs_backend {
 		ET_IDENT,
 		ET_VISIT,
 		ET_CALL,
-		ET_ACCESS
+		ET_ACCESS,
+		ET_UNIOP,
+		ET_CONSTR,
 	};
 
 	class Expression {
@@ -61,6 +64,21 @@ namespace sgs_backend {
 		void setResType(SType *t) { resType = t; }
 	};
 
+	enum UNIOP {
+		NOT,
+		MINUS,
+		BIT_NOT
+	};
+
+	class UniopExp : Expression {
+		UNIOP op;
+		Expression* val;
+	public:
+		UniopExp(UNIOP op,Expression* val): Expression(ET_UNIOP, val->getResType()), op(op), val(val) {}
+		UNIOP getOp() const { return op; }
+		Expression* getVal() const { return val; }
+	};
+
 	enum BINOP {
 		AND,
 		OR,
@@ -72,13 +90,15 @@ namespace sgs_backend {
 		LT,
 	};
 
+	SType* getBinopType(BINOP op, SType* lhs, SType* rhs);
+
 	class BinopExp : public Expression {
 	private:
 		BINOP op;
 		Expression *left, *right;
 	public:
-		BinopExp(BINOP op, SType* tp, Expression* left, Expression* right) : 
-			Expression(ET_BINOP, tp), op(op), left(left), right(right) {}
+		BinopExp(BINOP op, Expression* left, Expression* right) : 
+			Expression(ET_BINOP, getBinopType(op, left->getResType(), right->getResType())), op(op), left(left), right(right) {}
 		Expression *getLeft() const { return left; }
 		Expression *getRigth() const { return right; }
 		BINOP getOp() const { return op; }
@@ -111,10 +131,10 @@ namespace sgs_backend {
 	};
 
 	class FloatLiteral : public LiteralExp {
-		double value;
+		float value;
 	public:
-		explicit FloatLiteral(double value = 0) : LiteralExp(BasicType::FRACTION), value(value) {}
-		double getValue() const { return value; }
+		explicit FloatLiteral(float value = 0) : LiteralExp(BasicType::FRACTION), value(value) {}
+		float getValue() const { return value; }
 	};
 
 	// class StrLiteral : public LiteralExp {
@@ -124,7 +144,16 @@ namespace sgs_backend {
 	// 	string getValue() const { return value; }
 	// };
 
-	inline LiteralExp* getLiteral(int value = 0) {
+	class ConstString : public Expression {
+		string str;
+	public:
+		ConstString(string str) : Expression(ET_CONSTR, nullptr), str(std::move(str)) {}
+		const string& getStr() const {
+			return str;
+		}
+	};
+
+	inline LiteralExp* getLiteral(int value) {
 		return new IntLiteral(value);
 	}
 
@@ -220,7 +249,7 @@ namespace sgs_backend {
 			  type(type),
 			  initValue(initValue) {}
 
-		string getName() const { return name; }
+		const string& getName() const { return name; }
 		SType* getType() const { return type; }
 		LiteralExp* getInitValue() const { return initValue; }
 	};
@@ -231,19 +260,25 @@ namespace sgs_backend {
 		string name;
 		vector <std::pair<SType *, string>> paramList;
 	public:
-		FuncProto(SType *ret, string n, vector<pair<SType*, string>> paramList) : AST(AT_PROTO), returnType(ret), name(std::move(n)), paramList(std::move(paramList)) {}
+		FuncProto(SType *ret, string funcName, vector<pair<SType*, string>> paramList) : AST(AT_PROTO), returnType(ret), name(std::move(funcName)), paramList(std::move(paramList)) {}
 		void pushParam(SType *t, string n) {
 			paramList.emplace_back(t, n);
 		}
 		FunctionType* getLLVMType(LLVMContext& context) const {
 			vector<Type*> res;
 			for (const auto& x : paramList) {
-				Type* tp = x.first->toLLVMType(context);
-				if (x.first->getLevel() == Types::BASIC_TYPE) {
-					res.push_back(tp);
-				} else {
-					res.push_back(PointerType::get(tp, 0));
-				}
+				// Type* tp = x.first->toLLVMType(context);
+				// if (x.first->getLevel() == Types::BASIC_TYPE) {
+				// 	res.push_back(tp);
+				// } else {
+				// 	// const auto cont = dyn_cast<PointerType>(tp)->getElementType();
+				// 	// if (cont->isArrayTy()) {
+				// 		// res.push_back(PointerType::get(dyn_cast<ArrayType>(cont)->getElementType(), 0));
+				// 	// } else {
+				// 		// res.push_back(PointerType::get(tp, 0));
+				// 	// }
+				// }
+				res.push_back(getParamType(x.first, context));
 			}
 			return FunctionType::get(returnType->toLLVMType(context), res, false);
 		}
@@ -309,8 +344,7 @@ namespace sgs_backend {
 		Expression * condition;
 		BlockStmt * body;
 	public:
-		WhileStmt(Expression *c, BlockStmt* body) : Statement(ST_WHILE), condition(c), body(body) {}
-		void setBody(BlockStmt *b) { body = b; }
+		WhileStmt(Expression *cond, BlockStmt* body) : Statement(ST_WHILE), condition(cond), body(body) {}
 		BlockStmt *getBody() const { return body; }
 		Expression* getCondition() const { return condition; }
 	};
