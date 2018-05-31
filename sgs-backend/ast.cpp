@@ -23,6 +23,7 @@ sgs_backend::SType* sgs_backend::fromBasicType(BasicType tp) {
 	case BasicType::INTEGER: return createIntType();
 	case BasicType::FRACTION: return createFloatType();
 	case BasicType::BOOLEAN: return createBoolType();
+	case BasicType::CHAR: return createCharType();
 	default:
 		return nullptr;
 	}

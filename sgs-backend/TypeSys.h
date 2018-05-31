@@ -3,6 +3,7 @@
 #include <string>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/LLVMContext.h>
 #include <cstddef>
 #include <map>
 
@@ -30,7 +31,7 @@ namespace sgs_backend {
 		virtual ~SType() = default;
 		explicit SType(Types level) : level(level) {}
 		Types getLevel() const { return level; }
-		virtual Type* toLLVMType(LLVMContext& context) const {
+		virtual Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const {
 			return nullptr;
 		}
 	};
@@ -47,7 +48,7 @@ namespace sgs_backend {
 	public:
 		explicit SBasicType(BasicType type) : SType(Types::BASIC_TYPE), type(type) {}
 		BasicType getBasicType() const { return type; }
-		Type* toLLVMType(LLVMContext& context) const override {
+		Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const override {
 			if (type == BasicType::INTEGER) {
 				return Type::getInt32Ty(context);
 			} else if (type == BasicType::FRACTION) {
@@ -86,8 +87,8 @@ namespace sgs_backend {
 			return count;
 		}
 		SType* getElementType() const { return type; }
-		Type* toLLVMType(LLVMContext& context) const override {
-			return ArrayType::get(type->toLLVMType(context), count);
+		Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const override {
+			return ArrayType::get(type->toLLVMType(context, typeReference), count);
 		}
 	};
 
@@ -99,10 +100,23 @@ namespace sgs_backend {
 		auto& getTypes() const {
 			return types;
 		}
-		Type* toLLVMType(LLVMContext& context) const override {
+		SType* getElemType(const string& str) const {
+			for (const auto& x : types) {
+				if (x.first == str) return x.second;
+			}
+			return nullptr;
+		}
+		Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const override {
+			// if (context.) {
+				
+			// }
+			// if(StructType::create())
+			if (typeReference.find(name) != typeReference.end()) {
+				return typeReference.find(name)->second;
+			}
 			vector<Type*> res;
 			for (auto && type : types) {
-				res.push_back(type.second->toLLVMType(context));
+				res.push_back(type.second->toLLVMType(context, typeReference));
 			}
 			return StructType::create(context, res, name);
 		}
@@ -145,6 +159,6 @@ namespace sgs_backend {
 
 	bool sameType(SType* t1, SType* t2);
 
-	Type* getParamType(SType* t, LLVMContext& context);
+	Type* getParamType(SType* t, LLVMContext& context, const map<string, Type*>& typeReference);
 
 }

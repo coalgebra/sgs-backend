@@ -33,13 +33,13 @@ namespace sgs_backend {
 		}
 	}
 
-	Type* getParamType(SType* t, LLVMContext& context) {
+	Type* getParamType(SType* t, LLVMContext& context, const map<string, Type*>& typeReference){
 		if (t->getLevel() == Types::BASIC_TYPE) {
-			return t->toLLVMType(context);
+			return t->toLLVMType(context, typeReference);
 		}
 		if (t->getLevel() == Types::ARRAY_TYPE) {
-			return PointerType::get(getParamType(dynamic_cast<SArrayType*>(t)->getElementType(), context), 0);
+			return PointerType::get(getParamType(dynamic_cast<SArrayType*>(t)->getElementType(), context, typeReference), 0);
 		}
-		return PointerType::get(t->toLLVMType(context), 0);
+		return PointerType::get(t->toLLVMType(context, typeReference), 0);
 	}
 }

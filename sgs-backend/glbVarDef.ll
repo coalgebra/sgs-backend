@@ -6,6 +6,7 @@ declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
 declare i32 @putchar(i32)
 declare i32 @getchar()
+declare i8* @strcpy(i8*, i8*)
 
 define i8 @intToChar(i32) {
 	%2 = trunc i32 %0 to i8
@@ -88,14 +89,16 @@ entry:
   ret i32 %ret.load
 }
 
-define i32 @writeGArray(i32, i32) {
+define i32 @writeGArray(i32*, i32, i32) {
 entry:
+  %b = alloca i32*
+  store i32* %0, i32** %b
   %i = alloca i32
-  store i32 %0, i32* %i
+  store i32 %1, i32* %i
   %v = alloca i32
-  store i32 %1, i32* %v
+  store i32 %2, i32* %v
   %load = load i32, i32* %i
-  %array.load = load i32*, i32** @b
+  %array.load = load i32*, i32** %b
   %visit = getelementptr inbounds i32, i32* %array.load, i32 %load
   %load.val = load i32, i32* %v
   store i32 %load.val, i32* %visit
@@ -104,7 +107,8 @@ entry:
 
 define i32 @main() {
 entry:
-  %call.res = call i32 @writeGArray(i32 1, i32 14)
+  %load = load i32*, i32** @b
+  %call.res = call i32 @writeGArray(i32* %load, i32 1, i32 2)
   %call.res1 = call i32 @visitGArray(i32 1)
   %call.res2 = call i32 @printNum(i32 %call.res1)
   ret i32 0

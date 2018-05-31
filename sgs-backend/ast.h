@@ -123,6 +123,15 @@ namespace sgs_backend {
 		int getValue() const { return value; }
 	};
 
+	class CharLiteral : public LiteralExp {
+		char value;
+	public:
+		explicit CharLiteral(char value = 0) : LiteralExp(BasicType::CHAR), value(value) {}
+		char getValue() const {
+			return value;
+		}
+	};
+
 	class BoolLiteral : public LiteralExp {
 		bool value;
 	public:
@@ -165,6 +174,10 @@ namespace sgs_backend {
 		return new FloatLiteral(value);
 	}
 
+	inline LiteralExp* getLiteral(char value = 0) {
+		return new CharLiteral(value);
+	}
+
 	class IdExp : public Expression {
 		string name;
 	public:
@@ -174,11 +187,18 @@ namespace sgs_backend {
 		}
 	};
 
+	inline SType* getAccessType(SType* tp, const string& str) {
+		return dynamic_cast<STupleType*>(tp)->getElemType(str);
+	}
+
 	class AccessExp : public Expression {
 		Expression* object;
 		string member;
 	public:
-		AccessExp(Expression* obj, string member, SType* resType) : Expression(ET_ACCESS, resType), object(obj), member(std::move(member)) {}
+		AccessExp(Expression* obj, const string& member) : 
+			Expression(ET_ACCESS, getAccessType(obj->getResType(), member)), 
+			object(obj),  
+			member(member) {}
 		Expression* getObject() const { return object; }
 		string getMember() const { return member; }
 	};
@@ -264,7 +284,7 @@ namespace sgs_backend {
 		void pushParam(SType *t, string n) {
 			paramList.emplace_back(t, n);
 		}
-		FunctionType* getLLVMType(LLVMContext& context) const {
+		FunctionType* getLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const {
 			vector<Type*> res;
 			for (const auto& x : paramList) {
 				// Type* tp = x.first->toLLVMType(context);
@@ -278,9 +298,9 @@ namespace sgs_backend {
 				// 		// res.push_back(PointerType::get(tp, 0));
 				// 	// }
 				// }
-				res.push_back(getParamType(x.first, context));
+				res.push_back(getParamType(x.first, context, typeReference));
 			}
-			return FunctionType::get(returnType->toLLVMType(context), res, false);
+			return FunctionType::get(returnType->toLLVMType(context, typeReference), res, false);
 		}
 
 		SType *getReturnType() const { return returnType; };

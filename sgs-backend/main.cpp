@@ -256,13 +256,13 @@ void glbVarDefTest() {
 	 *		return b[i];
 	 *	}
 	 *	
-	 *	int writeGArray(int i, int v) {
+	 *	int writeGArray(int* b, int i, int v) {
 	 *		b[i] = v;
 	 *		return 0;
 	 *	}
 	 *	
 	 *	int main() {
-	 *		writeGArray(1, 2);
+	 *		writeGArray(b, 1, 2);
 	 *		printNum(visitGArray(1));
 	 *		return 0;
 	 *	}
@@ -270,6 +270,7 @@ void glbVarDefTest() {
 	Context code;
 	SType* intType = createIntType();
 	SType* aryType = new SArrayType(intType, 10);
+	SType* aryType2 = new SArrayType(intType, 0);
 
 	GlobalVarDef* aDef = new GlobalVarDef("a", intType);
 	GlobalVarDef* bDef = new GlobalVarDef("b", aryType);
@@ -283,16 +284,16 @@ void glbVarDefTest() {
 	 BlockStmt* vaBody = new BlockStmt(vaStmt);
 	 code.push_back(new FuncDef(vaProto, vaBody));
  
-	 FuncProto* waProto = new FuncProto(intType, "writeGArray", { std::make_pair(intType, "i") , std::make_pair(intType, "v") });
+	 FuncProto* waProto = new FuncProto(intType, "writeGArray", { std::make_pair(aryType2, "b"), std::make_pair(intType, "i") , std::make_pair(intType, "v") });
 	 vector<Statement*> waStmt;
-	 waStmt.push_back(new AssignStmt(new VisitExp(new IdExp("b", aryType), new IdExp("i", intType)), new IdExp("v", intType)));
+	 waStmt.push_back(new AssignStmt(new VisitExp(new IdExp("b", aryType2), new IdExp("i", intType)), new IdExp("v", intType)));
 	 waStmt.push_back(new ReturnStmt(getLiteral(0)));
 	 BlockStmt* waBody = new BlockStmt(waStmt);
 	 code.push_back(new FuncDef(waProto, waBody));
  
 	 FuncProto* mainProto = new FuncProto(intType, "main", {});
 	 vector<Statement*> mainStmt;
-	 mainStmt.push_back(new ExpStmt(new CallExp("writeGArray", {getLiteral(1), getLiteral(2)}, intType)));
+	 mainStmt.push_back(new ExpStmt(new CallExp("writeGArray", { new IdExp("b", aryType), getLiteral(1), getLiteral(2)}, intType)));
 	 mainStmt.push_back(new ExpStmt(new CallExp("printNum", { new CallExp("visitGArray", {getLiteral(1)}, intType) }, intType)));
 	 mainStmt.push_back(new ReturnStmt(getLiteral(0)));
 	 BlockStmt* mainBody = new BlockStmt(mainStmt);
@@ -302,7 +303,8 @@ void glbVarDefTest() {
 }
 
 void stringSimpleTest() {
-	/** int main() {
+	/** 
+	 *	int main() {
 	 *		char[] x = "123"; 
 	 *		x[0] = x[0] + 1;
 	 *		printStr(x);
@@ -322,19 +324,99 @@ void stringSimpleTest() {
 	mainStmt.push_back(new ReturnStmt(getLiteral(0)));
 	BlockStmt* mainBody = new BlockStmt(mainStmt);
 	code.push_back(new FuncDef(mainProto, mainBody));
-
 	totalTranslation(code, "stringSimpleTest.ll");
+}
+
+void simpleStructTest() {
+
+	/** 
+	 *  struct fucker {
+	 *		int a;
+	 *		char b;
+	 *		int c;
+	 *  };
+	 *  
+	 *  int printFucker(struct fucker* f) {
+	 *		printNum(f->a);
+	 *		putchar(' ');
+	 *		putchar(f->b);
+	 *		putchar(' ');
+	 *		printNum(f->c);
+	 *		return 0;
+	 *  }
+	 *  
+	 *  int main() {
+	 *		struct fucker a;
+	 *		a.a = 1;
+	 *		a.b = 'G';
+	 *		a.c = 10;
+	 *		while(a.c > 0) {
+	 *			putchar(a.b);
+	 *			a.a = a.a + a.c;
+	 *			a.c = a.c - 1;
+	 *		}
+	 *		printNum(a.c);
+	 *		printFucker(&a);
+	 *		return 0;
+	 *  }
+	 *  
+	 */
+
+	SType* intType = createIntType();
+	SType* charType = createCharType();
+	SType* fuckerType = new STupleType({std::make_pair("a", intType), std::make_pair("b", charType), std::make_pair("c", intType)}, "fucker");
+	Context code;
+
+	code.push_back(new TypeDef(fuckerType, "fucker"));
+	Expression* a = new IdExp("a", fuckerType);
+	FuncProto* printFuckerProto = new FuncProto(intType, "printFucker", { std::make_pair(fuckerType, "a") });
+	vector<Statement*> printFuckerStmt;
+	printFuckerStmt.push_back(new ExpStmt(new CallExp("printNum", { new AccessExp(a, "a") }, intType)));
+	printFuckerStmt.push_back(new ExpStmt(new CallExp("putchar", { getLiteral(' ')}, intType)));
+	printFuckerStmt.push_back(new ExpStmt(new CallExp("putchar", { new AccessExp(a, "b") }, intType)));
+	printFuckerStmt.push_back(new ExpStmt(new CallExp("putchar", { getLiteral(' ')}, intType)));
+	printFuckerStmt.push_back(new ExpStmt(new CallExp("printNum", { new AccessExp(a, "c") }, intType)));
+	printFuckerStmt.push_back(new ReturnStmt(getLiteral(0)));
+	code.push_back(new FuncDef(printFuckerProto, new BlockStmt(printFuckerStmt)));
+	FuncProto* mainProto = new FuncProto(intType, "main", {});
+	vector<Statement*> mainStmt;
+	
+	mainStmt.push_back(new VarDefStmt(fuckerType, nullptr, "a"));
+	mainStmt.push_back(new AssignStmt(new AccessExp(a, "a"), getLiteral(1)));
+	mainStmt.push_back(new AssignStmt(new AccessExp(a, "b"), getLiteral('G')));
+	mainStmt.push_back(new AssignStmt(new AccessExp(a, "c"), getLiteral(10)));
+	mainStmt.push_back(new WhileStmt(new BinopExp(GT, new AccessExp(a, "c"), getLiteral(0)),
+		new BlockStmt({
+			new ExpStmt(new CallExp("putchar", {new AccessExp(a, "b")}, intType)),
+			new AssignStmt(new AccessExp(a, "a"), new BinopExp(ADD, new AccessExp(a, "a"), getLiteral(1))),
+			new AssignStmt(new AccessExp(a, "c"), new BinopExp(SUB, new AccessExp(a, "c"), getLiteral(1)))
+		})));
+	mainStmt.push_back(new ExpStmt(new CallExp("printFucker", {a}, intType)));
+	mainStmt.push_back(new ReturnStmt(getLiteral(0)));
+	BlockStmt* mainBody = new BlockStmt(mainStmt);
+	code.push_back(new FuncDef(mainProto, mainBody));
+
+	totalTranslation(code, "simpleStructTest.ll");
+}
+
+void complexTypeTest() {
+	/** int a[10][10]; // high order 
+	 *  
+	 */
+}
+
+void test() {
+	simpleTest();
+	floatIntTest();
+	localArrayTest();
+	glbVarDefTest();
+	stringSimpleTest();
+	simpleStructTest();
 }
 
 int main() {
 
-	// simpleTest();
-	// floatIntTest();
-	// localArrayTest();
-	// glbVarDefTest();
-	stringSimpleTest();
 	// temp();
-	int n;
 	// puts("hell world");
 	// std::cin >> n;
 	// n = n + 1;

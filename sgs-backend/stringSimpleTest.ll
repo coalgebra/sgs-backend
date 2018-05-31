@@ -78,8 +78,8 @@ source_filename = "wtf"
 
 define i32 @main() {
 entry:
-  %x = alloca [4 x i8]
   %x.ptr = alloca i8*
+  %x = alloca [4 x i8]
   %0 = getelementptr inbounds [4 x i8], [4 x i8]* %x, i32 0, i32 0
   store i8* %0, i8** %x.ptr
   %str.ptr = load i8*, i8** %x.ptr

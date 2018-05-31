@@ -52,6 +52,12 @@ void sgs_backend::builtinFuncInit() {
 	FunctionType* strcpy = FunctionType::get(Type::getInt8PtrTy(theContext), { Type::getInt8PtrTy(theContext) , Type::getInt8PtrTy(theContext) }, false);
 	funcReference["strcpy"] = Function::Create(strcpy, GlobalValue::ExternalLinkage, "strcpy");
 
+	FunctionType* getchar = FunctionType::get(Type::getInt32Ty(theContext), {}, false);
+	funcReference["getchar"] = Function::Create(getchar, GlobalValue::ExternalLinkage, "getchar");
+
+	FunctionType* putchar = FunctionType::get(Type::getInt32Ty(theContext), { Type::getInt32Ty(theContext) }, false);
+	funcReference["putchar"] = Function::Create(putchar, GlobalValue::ExternalLinkage, "putchar");
+
 	builtInFuncs += "\n\
 @printNum.constStr = constant [3 x i8] c\"%d\\00\", align 1\n\
 @printStr.constStr = constant[3 x i8] c\"%s\\00\", align 1\n\
@@ -256,7 +262,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 		case BasicType::INTEGER:
 		{
 			const auto intlit = dynamic_cast<IntLiteral*>(lit);
-			return Constant::getIntegerValue(lit->getResType()->toLLVMType(theContext), APInt(32, intlit->getValue()));
+			return Constant::getIntegerValue(lit->getResType()->toLLVMType(theContext, typeReference), APInt(32, intlit->getValue()));
 		}
 		case BasicType::FRACTION:
 		{
@@ -266,7 +272,11 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 		case BasicType::BOOLEAN:
 		{
 			const auto boolit = dynamic_cast<BoolLiteral*>(lit);
-			return Constant::getIntegerValue(lit->getResType()->toLLVMType(theContext), APInt(1, boolit->getValue()));
+			return Constant::getIntegerValue(lit->getResType()->toLLVMType(theContext, typeReference), APInt(1, boolit->getValue()));
+		}
+		case BasicType::CHAR: {
+			const auto charlit = dynamic_cast<CharLiteral*>(lit);
+			return Constant::getIntegerValue(lit->getResType()->toLLVMType(theContext, typeReference), APInt(8, charlit->getValue()));
 		}
 		default:
 			std::cerr << "wtf ???" << std::endl;
@@ -293,11 +303,24 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 	case ET_CALL: {
 		const auto callexp = dynamic_cast<CallExp*>(exp);
 		Function* fun = funcReference[callexp->getFunction()];
+		Type* funTy1 = dyn_cast<PointerType>(fun->getType())->getElementType();
+		FunctionType* funTy = dyn_cast<FunctionType>(funTy1);
 		vector<Value*> params;
+		int counter = 0;
 		for (auto&& x : callexp->getParam()) {
 			auto temp = exprCodegen(x, env);
-			if (temp->getType()->isPointerTy()) {
+			if (temp->getType()->isPointerTy() && x->getResType()->getLevel() != Types::TUPLE_TYPE) {
 				temp = builder.CreateLoad(temp, "load");
+			}
+			if (funTy->getParamType(counter)->isIntegerTy() &&
+				temp->getType()->isIntegerTy()) {
+				const auto lt = dyn_cast<IntegerType>(funTy->getParamType(counter));
+				const auto rt = dyn_cast<IntegerType>(temp->getType());
+				if (lt->getBitWidth() < rt->getBitWidth()) {
+					temp = builder.CreateTrunc(temp, lt, "param.trunc");
+				} else if (lt->getBitWidth() > rt->getBitWidth()) {
+					temp = builder.CreateSExt(temp, lt, "param.sext");
+				}
 			}
 			params.push_back(temp);
 		}
@@ -306,7 +329,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 	case ET_ACCESS: {
 		const auto accexp = dynamic_cast<AccessExp*>(exp);
 		const string name = accexp->getMember();
-		Value* res = exprCodegen(accexp->getObject(), env);
+		Value* obj = exprCodegen(accexp->getObject(), env);
 		SType* ty = accexp->getObject()->getResType();
 		auto* tp = dynamic_cast<STupleType*>(ty);
 		size_t i = 0;
@@ -315,11 +338,22 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				break;
 			}
 		}
+		// auto* resType = dynamic_cast<STupleType*>(tp)->getElemType(name)->toLLVMType(theContext, typeReference);
 		if (i == tp->getTypes().size()) {
 			std::cerr << "Can't find member " << name << std::endl;
 			return nullptr;
 		}
-		return builder.CreateStructGEP(tp->toLLVMType(theContext), res, i, "access.res");
+		// if (obj->getType()->isPointerTy()) {
+		// 	const auto* rt = dyn_cast<PointerType>(obj->getType());
+		// 	if (rt->getElementType()->isPointerTy()) {
+		// 		obj = builder.CreateLoad(obj, "load.res");
+		// 	}
+		// }
+		return builder.CreateInBoundsGEP(obj, { 
+			Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)), 
+			Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, i)) 
+		}, "access.res");
+		// return builder.CreateStructGEP(resType->getPointerTo(0), obj, i, "access.res");
 	}
 	default:
 		std::cerr << "What the fuck??" << std::endl;
@@ -464,11 +498,14 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 	}
 	case ST_VARDEF: {
 		const auto vardef = dynamic_cast<VarDefStmt*>(stmt);
-		Value* res = builder.CreateAlloca(vardef->getVarType()->toLLVMType(theContext), nullptr, vardef->getName());
-		Type* type = vardef->getVarType()->toLLVMType(theContext);
+		IRBuilder<> tempBuilder(&builder.GetInsertBlock()->getParent()->getEntryBlock(), builder.GetInsertBlock()->getParent()->getEntryBlock().begin());
+		Value* res = tempBuilder.CreateAlloca(vardef->getVarType()->toLLVMType(theContext, typeReference), nullptr, vardef->getName());
+		Type* type = vardef->getVarType()->toLLVMType(theContext, typeReference);
 		if (type->isArrayTy()) { // we shall use the array type with its element pointer
 			const auto* atype = dyn_cast<ArrayType>(type);
-			Value* res2 = builder.CreateAlloca(PointerType::get(atype->getElementType(), 0), nullptr, vardef->getName() + ".ptr");
+			// builder.GetInsertBlock()->getParent()->getBasicBlockList().begin()->;
+			IRBuilder<> tempBuilder2(&builder.GetInsertBlock()->getParent()->getEntryBlock(), builder.GetInsertBlock()->getParent()->getEntryBlock().begin());
+			Value* res2 = tempBuilder2.CreateAlloca(PointerType::get(atype->getElementType(), 0), nullptr, vardef->getName() + ".ptr");
 			res = builder.CreateInBoundsGEP(res, { Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
 				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) });
 			builder.CreateStore(res, res2);
@@ -486,12 +523,20 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 	}
 }
 
-Value* sgs_backend::codegen(AST* ast) {
+
+ Value* sgs_backend::codegen(AST* ast) {
 	switch (ast->astType) {
 	case AT_TYPEDEF:
 	{
 		const auto typeDef = dynamic_cast<TypeDef*>(ast);
-		typeReference[typeDef->getName()] = typeDef->getDecType()->toLLVMType(theContext);
+		// vector<Type*> res;
+		// for (auto && type : typeDef->getDecType()) {
+		// 	res.push_back(type.second->toLLVMType(context, typeReference));
+		// }
+		// return StructType::create(context, res, name);
+		typeReference[typeDef->getName()] = typeDef->getDecType()->toLLVMType(theContext, typeReference);
+		// theModule.inser
+		// StructType::create()
 		return nullptr;
 	}
 	case AT_STMT:
@@ -499,7 +544,7 @@ Value* sgs_backend::codegen(AST* ast) {
 	case AT_FUNC:
 	{
 		const auto funDef = dynamic_cast<FuncDef*>(ast);
-		FunctionType* funType = funDef->getProto()->getLLVMType(theContext);
+		FunctionType* funType = funDef->getProto()->getLLVMType(theContext, typeReference);
 		Function* fun = Function::Create(funType, GlobalValue::ExternalLinkage, funDef->getProto()->getName(), theModule);
 		funcReference[funDef->getProto()->getName()] = fun;
 		BasicBlock* funBB = BasicBlock::Create(theContext, "entry", fun);
@@ -507,17 +552,23 @@ Value* sgs_backend::codegen(AST* ast) {
 		auto* env = Environment::derive(globalEnv);
 		auto iter = fun->args().begin();
 		for (const auto& x : funDef->getProto()->getParam()) {
-			const auto temp = builder.CreateAlloca(iter->getType(), 0, nullptr, x.second);
-			env->insert(x.second, temp);
-			builder.CreateStore(iter, temp);
-			iter++;
+			if (x.first->getLevel() != Types::TUPLE_TYPE) {
+				const auto temp = builder.CreateAlloca(iter->getType(), 0, nullptr, x.second);
+				env->insert(x.second, temp);
+				builder.CreateStore(iter, temp);
+				iter++;
+			} else {
+				iter->setName(x.second);
+				env->insert(x.second, iter);
+				iter++;
+			}
 		}
 		return stmtCodegen(funDef->getBody(), env, nullptr, nullptr);
 	}
 	case AT_PROTO:
 	{
 		const auto funProto = dynamic_cast<FuncProto*>(ast);
-		FunctionType* funTy = funProto->getLLVMType(theContext);
+		FunctionType* funTy = funProto->getLLVMType(theContext, typeReference);
 		return Function::Create(funTy, GlobalValue::CommonLinkage, funProto->getName(), theModule);
 	}
 	case AT_GLBVARDEF: {
@@ -533,7 +584,6 @@ Value* sgs_backend::codegen(AST* ast) {
 					GlobalValue::CommonLinkage,
 					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)), 
 					glbVarDef->getName());
-				// globalEnv->insert(glbVarDef->getName(), temp);
 				globalEnv->getBindings()[glbVarDef->getName()] = temp;
 				return temp;
 			}
@@ -563,14 +613,14 @@ Value* sgs_backend::codegen(AST* ast) {
 
 			Constant* res = new GlobalVariable(
 				*theModule,
-				aryTp->toLLVMType(theContext), 
+				aryTp->toLLVMType(theContext, typeReference),
 				false, 
 				GlobalValue::CommonLinkage,
-				ConstantAggregateZero::get(aryTp->toLLVMType(theContext)), 
+				ConstantAggregateZero::get(aryTp->toLLVMType(theContext, typeReference)),
 				glbVarDef->getName() + ".array");
 
 			Constant* get = ConstantExpr::getInBoundsGetElementPtr(
-				aryTp->toLLVMType(theContext),
+				aryTp->toLLVMType(theContext, typeReference),
 				res, vector<Constant*>({
 					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) ,
 					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0))
@@ -578,7 +628,7 @@ Value* sgs_backend::codegen(AST* ast) {
 			
 			auto temp = new GlobalVariable(
 				*theModule,
-				aryTp->getElementType()->toLLVMType(theContext)->getPointerTo(0),
+				aryTp->getElementType()->toLLVMType(theContext, typeReference)->getPointerTo(0),
 				false, 
 				GlobalValue::InternalLinkage, 
 				get, 
@@ -586,8 +636,8 @@ Value* sgs_backend::codegen(AST* ast) {
 			return globalEnv->getBindings()[glbVarDef->getName()] = temp;
 		} else {
 			const auto tTp = dynamic_cast<STupleType*>(tp);
-			return globalEnv->getBindings()[glbVarDef->getName()] = new GlobalVariable(tTp->toLLVMType(theContext), false, GlobalValue::CommonLinkage,
-				ConstantAggregateZero::get(tTp->toLLVMType(theContext)), glbVarDef->getName());
+			return globalEnv->getBindings()[glbVarDef->getName()] = new GlobalVariable(tTp->toLLVMType(theContext, typeReference), false, GlobalValue::CommonLinkage,
+				ConstantAggregateZero::get(tTp->toLLVMType(theContext, typeReference)), glbVarDef->getName());
 		}
 	}
 	default: ;
