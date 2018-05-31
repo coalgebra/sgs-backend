@@ -399,10 +399,52 @@ void simpleStructTest() {
 	totalTranslation(code, "simpleStructTest.ll");
 }
 
-void complexTypeTest() {
-	/** int a[10][10]; // high order 
+void complexTypeTest1() {
+	/** 
+	 *  This is a test for basic array inside a structure
 	 *  
+	 *  and here is the corresponding C code
+	 *  
+	 *  struct fucker {
+	 *		int a;
+	 *		char b[10];
+	 *		int c;
+	 *	};
+	 *	
+	 *	int main() {
+	 *		struct fucker a;
+	 *		a.b = "123";
+	 *		a.b[1] = 'a';
+	 *		a.c = 6;
+	 *		printStr(a.b);
+	 *	}
 	 */
+	SType* intType = createIntType();
+	SType* charType = createCharType();
+	SType* aryType = new SArrayType(charType, 10);
+	SType* fuckerType = new STupleType({ std::make_pair("a", intType), std::make_pair("b", aryType), std::make_pair("c", intType) }, "fucker");
+	Context code;
+
+	code.push_back(new TypeDef(fuckerType, "fucker"));
+	Expression* a = new IdExp("a", fuckerType);
+	
+	FuncProto* mainProto = new FuncProto(intType, "main", {});
+	vector<Statement*> mainStmt;
+
+	mainStmt.push_back(new VarDefStmt(fuckerType, nullptr, "a"));
+	mainStmt.push_back(new AssignStmt(new AccessExp(a, "b"), new ConstString("123")));
+	mainStmt.push_back(new AssignStmt(new AccessExp(a, "c"), getLiteral(6)));
+	mainStmt.push_back(new AssignStmt(new VisitExp(new AccessExp(a, "b"), getLiteral(1)), getLiteral('a')));
+	mainStmt.push_back(new ExpStmt(new CallExp("printStr", { new AccessExp(a, "b") }, intType)));
+	mainStmt.push_back(new ReturnStmt(getLiteral(0)));
+	BlockStmt* mainBody = new BlockStmt(mainStmt);
+	code.push_back(new FuncDef(mainProto, mainBody));
+
+	totalTranslation(code, "complexTypeTest1.ll");
+}
+
+void complexTypeTest2() {
+	
 }
 
 void test() {
@@ -412,10 +454,10 @@ void test() {
 	glbVarDefTest();
 	stringSimpleTest();
 	simpleStructTest();
+	complexTypeTest1();
 }
 
 int main() {
-
 	// temp();
 	// puts("hell world");
 	// std::cin >> n;

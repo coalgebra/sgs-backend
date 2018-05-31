@@ -338,21 +338,51 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				break;
 			}
 		}
-		// auto* resType = dynamic_cast<STupleType*>(tp)->getElemType(name)->toLLVMType(theContext, typeReference);
+		auto* resType = dynamic_cast<STupleType*>(tp)->getElemType(name)->toLLVMType(theContext, typeReference);
 		if (i == tp->getTypes().size()) {
 			std::cerr << "Can't find member " << name << std::endl;
 			return nullptr;
 		}
-		// if (obj->getType()->isPointerTy()) {
-		// 	const auto* rt = dyn_cast<PointerType>(obj->getType());
-		// 	if (rt->getElementType()->isPointerTy()) {
-		// 		obj = builder.CreateLoad(obj, "load.res");
-		// 	}
-		// }
-		return builder.CreateInBoundsGEP(obj, { 
-			Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)), 
-			Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, i)) 
-		}, "access.res");
+		if (resType->isArrayTy()) { 
+			// we shall deal with array separately
+			/** A simple solution to the problem of implicit casting between array and pointer :
+			 *  struct A {int b[10];}
+			 *  struct A a;
+			 *  
+			 *  what if we visit the member b of A ?
+			 *  Its type will be int[10], which is hard to fit in our type and sematic system,
+			 *  so we declare another pointer here, to replace the usage of b
+			 *  
+			 *  a.b[0] = 1; 
+			 *  
+			 *  ==>
+			 *  
+			 *  int* t = a.b;
+			 *  t[0] = 1;
+			 */
+			ArrayType* aryTy = dyn_cast<ArrayType>(resType);
+			IRBuilder<> tempBuilder(&builder.GetInsertBlock()->getParent()->getEntryBlock(), builder.GetInsertBlock()->getParent()->getEntryBlock().begin());
+			Value* mid = tempBuilder.CreateAlloca(aryTy->getElementType()->getPointerTo(0), nullptr, "array.temp");
+			Value* res = builder.CreateInBoundsGEP(obj, {
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, i))
+				}, "access.res"); // res is an array pointer
+			res = builder.CreateInBoundsGEP(res, { Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) });
+			builder.CreateStore(res, mid);
+			return mid;
+		} else {
+			// if (obj->getType()->isPointerTy()) {
+			// 	const auto* rt = dyn_cast<PointerType>(obj->getType());
+			// 	if (rt->getElementType()->isPointerTy()) {
+			// 		obj = builder.CreateLoad(obj, "load.res");
+			// 	}
+			// }
+			return builder.CreateInBoundsGEP(obj, {
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, i))
+				}, "access.res");
+		}
 		// return builder.CreateStructGEP(resType->getPointerTo(0), obj, i, "access.res");
 	}
 	default:
