@@ -58,7 +58,7 @@ void sgs_backend::builtinFuncInit() {
 	FunctionType* putchar = FunctionType::get(Type::getInt32Ty(theContext), { Type::getInt32Ty(theContext) }, false);
 	funcReference["putchar"] = Function::Create(putchar, GlobalValue::ExternalLinkage, "putchar");
 
-	builtInFuncs += "\n\
+	builtInFuncs = "\n\
 @printNum.constStr = constant [3 x i8] c\"%d\\00\", align 1\n\
 @printStr.constStr = constant[3 x i8] c\"%s\\00\", align 1\n\
 @printFloat.constStr = constant[3 x i8] c\"%f\\00\", align 1\n\
@@ -343,6 +343,11 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			std::cerr << "Can't find member " << name << std::endl;
 			return nullptr;
 		}
+		if (obj->getType()->isPointerTy()) {
+			if (obj->getType()->getPointerElementType()->isPointerTy()) {
+				obj = builder.CreateLoad(obj, "access.load");
+			}
+		}
 		if (resType->isArrayTy()) { 
 			// we shall deal with array separately
 			/** A simple solution to the problem of implicit casting between array and pointer :
@@ -536,8 +541,10 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 			// builder.GetInsertBlock()->getParent()->getBasicBlockList().begin()->;
 			IRBuilder<> tempBuilder2(&builder.GetInsertBlock()->getParent()->getEntryBlock(), builder.GetInsertBlock()->getParent()->getEntryBlock().begin());
 			Value* res2 = tempBuilder2.CreateAlloca(PointerType::get(atype->getElementType(), 0), nullptr, vardef->getName() + ".ptr");
-			res = builder.CreateInBoundsGEP(res, { Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
-				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) });
+			res = builder.CreateInBoundsGEP(res, { 
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
+				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) 
+			});
 			builder.CreateStore(res, res2);
 			res = res2;
 		}

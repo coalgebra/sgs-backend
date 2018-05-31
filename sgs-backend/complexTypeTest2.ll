@@ -74,38 +74,43 @@ define i32 @readStr(i8*)  {
 ; ModuleID = 'wtf'
 source_filename = "wtf"
 
-define i32 @printFirst(i32*) {
+%Fucker = type { i32, [10 x i8], i32 }
+
+@"12345.str" = private constant [6 x i8] c"12345\00"
+
+define i32 @printFuckers(%Fucker*, i32) {
 entry:
-  %a = alloca i32*
-  store i32* %0, i32** %a
-  %array.load = load i32*, i32** %a
-  %visit = getelementptr inbounds i32, i32* %array.load, i32 0
-  %load = load i32, i32* %visit
-  %call.res = call i32 @printNum(i32 %load)
+  %array.temp = alloca i8*
+  %a = alloca %Fucker*
+  store %Fucker* %0, %Fucker** %a
+  %i = alloca i32
+  store i32 %1, i32* %i
+  %load = load i32, i32* %i
+  %array.load = load %Fucker*, %Fucker** %a
+  %visit = getelementptr inbounds %Fucker, %Fucker* %array.load, i32 %load
+  %access.res = getelementptr inbounds %Fucker, %Fucker* %visit, i32 0, i32 1
+  %2 = getelementptr inbounds [10 x i8], [10 x i8]* %access.res, i32 0, i32 0
+  store i8* %2, i8** %array.temp
+  %load1 = load i8*, i8** %array.temp
+  %call.res = call i32 @printStr(i8* %load1)
   ret i32 %call.res
 }
 
 define i32 @main() {
 entry:
-  %a.ptr = alloca i32*
-  %a = alloca [10 x i32]
-  %0 = getelementptr inbounds [10 x i32], [10 x i32]* %a, i32 0, i32 0
-  store i32* %0, i32** %a.ptr
-  %array.load = load i32*, i32** %a.ptr
-  %visit = getelementptr inbounds i32, i32* %array.load, i32 0
-  store i32 1, i32* %visit
-  %array.load1 = load i32*, i32** %a.ptr
-  %visit2 = getelementptr inbounds i32, i32* %array.load1, i32 1
-  %array.load3 = load i32*, i32** %a.ptr
-  %visit4 = getelementptr inbounds i32, i32* %array.load3, i32 0
-  %load.val = load i32, i32* %visit4
-  %add.res = add i32 %load.val, 5
-  store i32 %add.res, i32* %visit2
-  %array.load5 = load i32*, i32** %a.ptr
-  %visit6 = getelementptr inbounds i32, i32* %array.load5, i32 1
-  %load = load i32, i32* %visit6
-  %call.res = call i32 @printNum(i32 %load)
-  %load7 = load i32*, i32** %a.ptr
-  %call.res8 = call i32 @printFirst(i32* %load7)
+  %array.temp = alloca i8*
+  %fuckers.ptr = alloca %Fucker*
+  %fuckers = alloca [10 x %Fucker]
+  %0 = getelementptr inbounds [10 x %Fucker], [10 x %Fucker]* %fuckers, i32 0, i32 0
+  store %Fucker* %0, %Fucker** %fuckers.ptr
+  %array.load = load %Fucker*, %Fucker** %fuckers.ptr
+  %visit = getelementptr inbounds %Fucker, %Fucker* %array.load, i32 0
+  %access.res = getelementptr inbounds %Fucker, %Fucker* %visit, i32 0, i32 1
+  %1 = getelementptr inbounds [10 x i8], [10 x i8]* %access.res, i32 0, i32 0
+  store i8* %1, i8** %array.temp
+  %str.ptr = load i8*, i8** %array.temp
+  %2 = call i8* @strcpy(i8* %str.ptr, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @"12345.str", i32 0, i32 0))
+  %load = load %Fucker*, %Fucker** %fuckers.ptr
+  %call.res = call i32 @printFuckers(%Fucker* %load, i32 0)
   ret i32 0
 }

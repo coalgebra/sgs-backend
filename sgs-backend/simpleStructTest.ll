@@ -128,7 +128,6 @@ while.body:                                       ; preds = %while.cond
   br label %while.cond
 
 while.merge:                                      ; preds = %while.cond
-  call i32 @newline()
   %call.res11 = call i32 @printFucker(%fucker* %a)
   ret i32 0
 }

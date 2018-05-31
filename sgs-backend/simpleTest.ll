@@ -74,38 +74,36 @@ define i32 @readStr(i8*)  {
 ; ModuleID = 'wtf'
 source_filename = "wtf"
 
-define i32 @printFirst(i32*) {
+define i32 @main(i32) {
 entry:
-  %a = alloca i32*
-  store i32* %0, i32** %a
-  %array.load = load i32*, i32** %a
-  %visit = getelementptr inbounds i32, i32* %array.load, i32 0
-  %load = load i32, i32* %visit
-  %call.res = call i32 @printNum(i32 %load)
-  ret i32 %call.res
-}
+  %c = alloca i1
+  %b = alloca i32
+  %a = alloca i32
+  store i32 %0, i32* %a
+  store i32 1, i32* %b
+  store i1 false, i1* %c
+  %load.val = load i32, i32* %a
+  %load.val1 = load i32, i32* %b
+  %add.res = add i32 %load.val, %load.val1
+  store i32 %add.res, i32* %b
+  %load.val2 = load i32, i32* %b
+  %load.val3 = load i32, i32* %a
+  %gt.res = icmp sgt i32 %load.val2, %load.val3
+  store i1 %gt.res, i1* %c
+  %if.cond.load = load i1, i1* %c
+  br i1 %if.cond.load, label %if.take, label %if.fail
 
-define i32 @main() {
-entry:
-  %a.ptr = alloca i32*
-  %a = alloca [10 x i32]
-  %0 = getelementptr inbounds [10 x i32], [10 x i32]* %a, i32 0, i32 0
-  store i32* %0, i32** %a.ptr
-  %array.load = load i32*, i32** %a.ptr
-  %visit = getelementptr inbounds i32, i32* %array.load, i32 0
-  store i32 1, i32* %visit
-  %array.load1 = load i32*, i32** %a.ptr
-  %visit2 = getelementptr inbounds i32, i32* %array.load1, i32 1
-  %array.load3 = load i32*, i32** %a.ptr
-  %visit4 = getelementptr inbounds i32, i32* %array.load3, i32 0
-  %load.val = load i32, i32* %visit4
-  %add.res = add i32 %load.val, 5
-  store i32 %add.res, i32* %visit2
-  %array.load5 = load i32*, i32** %a.ptr
-  %visit6 = getelementptr inbounds i32, i32* %array.load5, i32 1
-  %load = load i32, i32* %visit6
+if.take:                                          ; preds = %entry
+  store i32 5, i32* %b
+  br label %if.merge
+
+if.fail:                                          ; preds = %entry
+  store i32 3, i32* %b
+  br label %if.merge
+
+if.merge:                                         ; preds = %if.fail, %if.take
+  %load = load i32, i32* %b
   %call.res = call i32 @printNum(i32 %load)
-  %load7 = load i32*, i32** %a.ptr
-  %call.res8 = call i32 @printFirst(i32* %load7)
-  ret i32 0
+  %ret.load = load i32, i32* %b
+  ret i32 %ret.load
 }

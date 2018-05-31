@@ -38,7 +38,7 @@ namespace sgs_backend {
 			return t->toLLVMType(context, typeReference);
 		}
 		if (t->getLevel() == Types::ARRAY_TYPE) {
-			return PointerType::get(getParamType(dynamic_cast<SArrayType*>(t)->getElementType(), context, typeReference), 0);
+			return PointerType::get(dynamic_cast<SArrayType*>(t)->getElementType()->toLLVMType(context, typeReference), 0);
 		}
 		return PointerType::get(t->toLLVMType(context, typeReference), 0);
 	}

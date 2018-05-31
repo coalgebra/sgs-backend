@@ -332,6 +332,8 @@ namespace sgs_backend {
 	// 	const vector <Expression *>& getParam() const { return paramList; };
 	// };
 
+	// inline SType* getFuncResType(SType*)
+
 	class CallExp : public Expression {
 	private:
 		string caller;

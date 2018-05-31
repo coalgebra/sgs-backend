@@ -444,7 +444,57 @@ void complexTypeTest1() {
 }
 
 void complexTypeTest2() {
-	
+	/** This is a test for structure array
+	 *  struct Fucker {
+	 *		int a;
+	 *		char b[10];
+	 *		int c;
+	 *  };
+	 *  
+	 *  int printFucker(struct Fucker* a, int i) {
+	 *		return printStr(a[i].b);
+	 *  }
+	 *  
+	 *  int main() {
+	 *		struct Fucker fuckers[10];
+	 *		fuckers[0].b = "12345";
+	 *		printFucker(fuckers, 0);
+	 *		return 0;
+	 *  }
+	 */
+
+	SType* intType = createIntType();
+	SType* charType = createCharType();
+	SType* aryType = new SArrayType(charType, 10);
+	SType* fuckerType = new STupleType({ std::make_pair("a", intType), std::make_pair("b", aryType), std::make_pair("c", intType) }, "Fucker");
+	SType* arFuckerType = new SArrayType(fuckerType, 10);
+
+	Context code;
+
+	code.push_back(new TypeDef(fuckerType, "Fucker"));
+
+	IdExp* a = new IdExp("a", arFuckerType);
+	IdExp* i = new IdExp("i", intType);
+
+	FuncProto* printFuckerProto = new FuncProto(intType, "printFuckers", {std::make_pair(arFuckerType, "a"), std::make_pair(intType, "i")});
+	code.push_back(new FuncDef(printFuckerProto,
+		new BlockStmt({
+			new ReturnStmt(new CallExp("printStr",
+				{new AccessExp(new VisitExp(a, i), "b") }, intType))
+		})));
+
+	FuncProto* mainProto = new FuncProto(intType, "main", {});
+	vector<Statement*> mainStmt;
+	mainStmt.push_back(new VarDefStmt(arFuckerType, nullptr, "fuckers"));
+	IdExp* fuckers = new IdExp("fuckers", arFuckerType);
+	mainStmt.push_back(new AssignStmt(
+		new AccessExp(new VisitExp(fuckers, getLiteral(0)), "b"), new ConstString("12345")));
+	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", {fuckers, getLiteral(0)}, intType)));
+	mainStmt.push_back(new ReturnStmt(getLiteral(0)));
+	BlockStmt* mainBody = new BlockStmt(mainStmt);
+	code.push_back(new FuncDef(mainProto, mainBody));
+
+	totalTranslation(code, "complexTypeTest2.ll");
 }
 
 void test() {
@@ -455,9 +505,11 @@ void test() {
 	stringSimpleTest();
 	simpleStructTest();
 	complexTypeTest1();
+	complexTypeTest2();
 }
 
 int main() {
+	// test();
 	// temp();
 	// puts("hell world");
 	// std::cin >> n;

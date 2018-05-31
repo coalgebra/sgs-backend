@@ -4,6 +4,9 @@
 @printFloat.constStr = constant[3 x i8] c"%f\00", align 1
 declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
+declare i32 @putchar(i32)
+declare i32 @getchar()
+declare i8* @strcpy(i8*, i8*)
 
 define i8 @intToChar(i32) {
 	%2 = trunc i32 %0 to i8
@@ -59,6 +62,10 @@ define i32 @readNum() {
 	%3 = load i32, i32* %1, align 4
 	ret i32 %3
 }
+define i32 @newline() {
+	call i32 @putchar(i32 10)
+	ret i32 0
+}
 
 define i32 @readStr(i8*)  {
 	%2 = call i32(i8*, ...) @scanf(i8* getelementptr inbounds([3 x i8], [3 x i8] * @printStr.constStr, i32 0, i32 0), i8* %0)
@@ -69,11 +76,11 @@ source_filename = "wtf"
 
 define i32 @main() {
 entry:
+  %res = alloca float
+  %fact = alloca float
   %i = alloca i32
   store i32 1, i32* %i
-  %fact = alloca float
   store float 1.000000e+00, float* %fact
-  %res = alloca float
   store float 0.000000e+00, float* %res
   br label %while.cond
 

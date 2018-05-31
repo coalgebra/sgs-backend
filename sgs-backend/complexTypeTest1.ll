@@ -74,7 +74,7 @@ define i32 @readStr(i8*)  {
 ; ModuleID = 'wtf'
 source_filename = "wtf"
 
-%fucker = type { i32, [10 x i8], i32 }
+%fucker.0 = type { i32, [10 x i8], i32 }
 
 @"123.str" = private constant [4 x i8] c"123\00"
 
@@ -83,21 +83,21 @@ entry:
   %array.temp4 = alloca i8*
   %array.temp2 = alloca i8*
   %array.temp = alloca i8*
-  %a = alloca %fucker
-  %access.res = getelementptr inbounds %fucker, %fucker* %a, i32 0, i32 1
+  %a = alloca %fucker.0
+  %access.res = getelementptr inbounds %fucker.0, %fucker.0* %a, i32 0, i32 1
   %0 = getelementptr inbounds [10 x i8], [10 x i8]* %access.res, i32 0, i32 0
   store i8* %0, i8** %array.temp
   %str.ptr = load i8*, i8** %array.temp
   %1 = call i8* @strcpy(i8* %str.ptr, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @"123.str", i32 0, i32 0))
-  %access.res1 = getelementptr inbounds %fucker, %fucker* %a, i32 0, i32 2
+  %access.res1 = getelementptr inbounds %fucker.0, %fucker.0* %a, i32 0, i32 2
   store i32 6, i32* %access.res1
-  %access.res3 = getelementptr inbounds %fucker, %fucker* %a, i32 0, i32 1
+  %access.res3 = getelementptr inbounds %fucker.0, %fucker.0* %a, i32 0, i32 1
   %2 = getelementptr inbounds [10 x i8], [10 x i8]* %access.res3, i32 0, i32 0
   store i8* %2, i8** %array.temp2
   %array.load = load i8*, i8** %array.temp2
   %visit = getelementptr inbounds i8, i8* %array.load, i32 1
   store i8 97, i8* %visit
-  %access.res5 = getelementptr inbounds %fucker, %fucker* %a, i32 0, i32 1
+  %access.res5 = getelementptr inbounds %fucker.0, %fucker.0* %a, i32 0, i32 1
   %3 = getelementptr inbounds [10 x i8], [10 x i8]* %access.res5, i32 0, i32 0
   store i8* %3, i8** %array.temp4
   %load = load i8*, i8** %array.temp4
