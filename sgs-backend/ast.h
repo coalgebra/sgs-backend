@@ -90,27 +90,27 @@ namespace sgs_backend {
 		LT,
 	};
 
-	SType* getBinopType(BINOP op, SType* lhs, SType* rhs);
+	SType* getBinopType(BINOP op, SType* lhs, SType* rhs, Context& context);
 
 	class BinopExp : public Expression {
 	private:
 		BINOP op;
 		Expression *left, *right;
 	public:
-		BinopExp(BINOP op, Expression* left, Expression* right) : 
-			Expression(ET_BINOP, getBinopType(op, left->getResType(), right->getResType())), op(op), left(left), right(right) {}
+		BinopExp(BINOP op, Expression* left, Expression* right, Context& context) : 
+			Expression(ET_BINOP, getBinopType(op, left->getResType(), right->getResType(), context)), op(op), left(left), right(right) {}
 		Expression *getLeft() const { return left; }
 		Expression *getRigth() const { return right; }
 		BINOP getOp() const { return op; }
 
 	};
 
-	SType* fromBasicType(BasicType tp);
+	SType* fromBasicType(BasicType tp, Context& context);
 
 	class LiteralExp : public Expression {
 		BasicType btype;
 	public:
-		explicit LiteralExp(BasicType type) : Expression(ET_LITERAL, fromBasicType(type)), btype(type) {}
+		explicit LiteralExp(BasicType type, Context& context) : Expression(ET_LITERAL, fromBasicType(type, context)), btype(type) {}
 		BasicType getBType() const {
 			return btype;
 		}
@@ -119,14 +119,14 @@ namespace sgs_backend {
 	class IntLiteral : public LiteralExp {
 		int value;
 	public:
-		explicit IntLiteral(int value = 0) : LiteralExp(BasicType::INTEGER), value(value) {}
+		explicit IntLiteral(int value, Context& context) : LiteralExp(BasicType::INTEGER, context), value(value) {}
 		int getValue() const { return value; }
 	};
 
 	class CharLiteral : public LiteralExp {
 		char value;
 	public:
-		explicit CharLiteral(char value = 0) : LiteralExp(BasicType::CHAR), value(value) {}
+		explicit CharLiteral(char value , Context& context) : LiteralExp(BasicType::CHAR, context), value(value) {}
 		char getValue() const {
 			return value;
 		}
@@ -135,14 +135,14 @@ namespace sgs_backend {
 	class BoolLiteral : public LiteralExp {
 		bool value;
 	public:
-		explicit BoolLiteral(bool value = false) : LiteralExp(BasicType::BOOLEAN), value(value) {}
+		explicit BoolLiteral(bool value, Context& context) : LiteralExp(BasicType::BOOLEAN, context), value(value) {}
 		bool getValue() const { return value; }
 	};
 
 	class FloatLiteral : public LiteralExp {
 		float value;
 	public:
-		explicit FloatLiteral(float value = 0) : LiteralExp(BasicType::FRACTION), value(value) {}
+		explicit FloatLiteral(float value, Context& context) : LiteralExp(BasicType::FLOAT, context), value(value) {}
 		float getValue() const { return value; }
 	};
 
@@ -162,20 +162,20 @@ namespace sgs_backend {
 		}
 	};
 
-	inline LiteralExp* getLiteral(int value) {
-		return new IntLiteral(value);
+	inline LiteralExp* getLiteral(int value, Context& context) {
+		return new IntLiteral(value, context);
 	}
 
-	inline LiteralExp* getLiteral(bool value = false) {
-		return new BoolLiteral(value);
+	inline LiteralExp* getLiteral(bool value, Context& context) {
+		return new BoolLiteral(value, context);
 	}
 
-	inline LiteralExp* getLiteral(double value = 0.0) {
-		return new FloatLiteral(value);
+	inline LiteralExp* getLiteral(double value, Context& context) {
+		return new FloatLiteral(value, context);
 	}
 
-	inline LiteralExp* getLiteral(char value = 0) {
-		return new CharLiteral(value);
+	inline LiteralExp* getLiteral(char value, Context& context) {
+		return new CharLiteral(value, context);
 	}
 
 	class IdExp : public Expression {
@@ -405,5 +405,6 @@ namespace sgs_backend {
 		ContinueStmt() : Statement(ST_CONTINUE) {}
 	};
 
-	using Context = vector<AST*>;
+	using Content = vector<AST*>;
+
 }

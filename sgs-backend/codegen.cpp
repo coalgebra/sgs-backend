@@ -264,7 +264,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			const auto intlit = dynamic_cast<IntLiteral*>(lit);
 			return Constant::getIntegerValue(lit->getResType()->toLLVMType(theContext, typeReference), APInt(32, intlit->getValue()));
 		}
-		case BasicType::FRACTION:
+		case BasicType::FLOAT:
 		{
 			const auto ftlit = dynamic_cast<FloatLiteral*>(lit);
 			return ConstantFP::get(theContext, APFloat(ftlit->getValue()));
@@ -624,7 +624,7 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 				globalEnv->getBindings()[glbVarDef->getName()] = temp;
 				return temp;
 			}
-			case BasicType::FRACTION: {
+			case BasicType::FLOAT: {
 				auto temp = new GlobalVariable(*theModule,
 					Type::getFloatTy(theContext), false, GlobalValue::CommonLinkage,
 					ConstantFP::get(Type::getFloatTy(theContext), 0.0), glbVarDef->getName());
@@ -687,7 +687,7 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 	return nullptr;
 }
 
-void sgs_backend::totalTranslation(const Context& cont, const string& filename) {
+void sgs_backend::totalTranslation(const Content& cont, const string& filename) {
 	codegenInit();
 	builtinFuncInit();
 	for (const auto& x : cont) codegen(x);

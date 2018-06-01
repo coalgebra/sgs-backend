@@ -7,7 +7,6 @@
 #include <cstddef>
 #include <map>
 
-
 using namespace llvm;
 
 namespace sgs_backend {
@@ -18,18 +17,23 @@ namespace sgs_backend {
 	using llvm::Type;
 	using std::map;
 
-
 	enum class Types {
 		BASIC_TYPE,
 		ARRAY_TYPE,
 		TUPLE_TYPE
 	};
 
+	class Context;
+
 	class SType {
 		Types level;
+		friend class Context;
+		static void method() {
+			//
+		}
 	public:
-		virtual ~SType() = default;
 		explicit SType(Types level) : level(level) {}
+		virtual ~SType() = default;
 		Types getLevel() const { return level; }
 		virtual Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const {
 			return nullptr;
@@ -38,20 +42,21 @@ namespace sgs_backend {
 
 	enum class BasicType {
 		INTEGER, // int
-		FRACTION, // double
+		FLOAT, // double
 		BOOLEAN, // bool
 		CHAR, // char
 	};
 
 	class SBasicType : public SType {
+		friend class Context;
 		BasicType type;
-	public:
 		explicit SBasicType(BasicType type) : SType(Types::BASIC_TYPE), type(type) {}
+	public:
 		BasicType getBasicType() const { return type; }
 		Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const override {
 			if (type == BasicType::INTEGER) {
 				return Type::getInt32Ty(context);
-			} else if (type == BasicType::FRACTION) {
+			} else if (type == BasicType::FLOAT) {
 				return Type::getFloatTy(context);
 			} else if (type == BasicType::CHAR){
 				return Type::getInt8Ty(context);
@@ -62,27 +67,12 @@ namespace sgs_backend {
 		}
 	};
 
-	inline SBasicType* createIntType() {
-		return new SBasicType(BasicType::INTEGER);
-	}
-
-	inline SBasicType* createFloatType() {
-		return new SBasicType(BasicType::FRACTION);
-	}
-
-	inline SBasicType* createBoolType() {
-		return new SBasicType(BasicType::BOOLEAN);
-	}
-
-	inline SBasicType* createCharType() {
-		return new SBasicType(BasicType::CHAR);
-	}
-
 	class SArrayType : public SType {
+		friend class Context;
 		SType* type;
 		size_t count;
-	public:
 		SArrayType(SType* type, size_t count) : SType(Types::ARRAY_TYPE), type(type), count(count) {}
+	public:
 		size_t getCount() const {
 			return count;
 		}
@@ -93,12 +83,18 @@ namespace sgs_backend {
 	};
 
 	class STupleType : public SType {
+
+		friend class Context;
+
 		std::vector<std::pair<std::string, SType*>> types;
 		string name;
-	public:
 		STupleType(vector<pair<string, SType*>> types, string name) : SType(Types::TUPLE_TYPE), types(std::move(types)), name(std::move(name)) {}
+	public:
 		auto& getTypes() const {
 			return types;
+		}
+		const string& getName() const {
+			return name;
 		}
 		SType* getElemType(const string& str) const {
 			for (const auto& x : types) {
@@ -152,6 +148,66 @@ namespace sgs_backend {
 
 		static Environment* derive(Environment* env) {
 			return new Environment(env);
+		}
+	};
+ //
+	string typeToString(SType* tp);
+
+	class Context {
+		map<string, SType*> typeRef;
+	public:
+		SType* getIntType() {
+			if (typeRef.find("int") != typeRef.end()) {
+				return typeRef.find("int")->second;
+			}
+			return typeRef["int"] = new SBasicType(BasicType::INTEGER);
+ 		}
+		
+		SType* getCharType() {
+			if (typeRef.find("char") != typeRef.end()) {
+				return typeRef.find("char")->second;
+			}
+			return typeRef["char"] = new SBasicType(BasicType::CHAR);
+		}
+
+		SType* getBoolType() {
+			if (typeRef.find("bool") != typeRef.end()) {
+				return typeRef.find("bool")->second;
+			}
+			return typeRef["bool"] = new SBasicType(BasicType::BOOLEAN);
+		}
+
+		SType* getFloatType() {
+			if (typeRef.find("float") != typeRef.end()) {
+				return typeRef.find("float")->second;
+			}
+			return typeRef["float"] = new SBasicType(BasicType::FLOAT);
+		}
+
+		SType* getArrayType(SType* elementType, size_t count) {
+			auto* type = new SArrayType(elementType, count);
+			const string res = typeToString(type);
+			if (typeRef.find(res) != typeRef.end()) {
+				delete type;
+				return typeRef.find(res)->second;
+			}
+			return typeRef[res] = type;
+		}
+
+		SType* getTupleType(const vector<pair<string, SType*>>& elements, const string& name) {
+			auto* type = new STupleType(elements, name);
+			const string res = typeToString(type);
+			if (typeRef.find(res) != typeRef.end()) {
+				delete type;
+				return typeRef.find(res)->second;
+			}
+			return typeRef[res] = type;
+		}
+
+		~Context() {
+			for (auto&& x : typeRef) {
+				delete x.second;
+			}
 		}
 	};
 

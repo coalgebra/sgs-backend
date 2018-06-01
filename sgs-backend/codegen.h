@@ -29,6 +29,6 @@ namespace sgs_backend {
 	Value* stmtCodegen(Statement* stmt, Environment* env, BasicBlock* cont, BasicBlock* bk);
 	Value* codegen(AST* ast);
 
-	void totalTranslation(const Context& cont, const string& filename);
+	void totalTranslation(const Content& cont, const string& filename);
 
 }

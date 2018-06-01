@@ -42,4 +42,38 @@ namespace sgs_backend {
 		}
 		return PointerType::get(t->toLLVMType(context, typeReference), 0);
 	}
+
+	string typeToString(SType* tp) {
+		switch (tp->getLevel()) {
+		case Types::BASIC_TYPE:
+		{
+			const auto bt = dynamic_cast<SBasicType*>(tp);
+			switch (bt->getBasicType()) {
+			case BasicType::INTEGER: return "int";
+			case BasicType::FLOAT: return "float";
+			case BasicType::BOOLEAN: return "bool";
+			case BasicType::CHAR: return "char";
+			default:
+				return "";
+			}
+		}
+		case Types::ARRAY_TYPE:
+		{
+			const auto at = dynamic_cast<SArrayType*>(tp);
+			return "[" + typeToString(at->getElementType()) + " x " + std::to_string(at->getCount()) + "]";
+		}
+		case Types::TUPLE_TYPE:
+		{
+			const auto tt = dynamic_cast<STupleType*>(tp);
+			string res = tt->getName() + "{";
+			res += typeToString(tt->getTypes()[0].second);
+			for (size_t i = 1; i < tt->getTypes().size(); i++) {
+				res += "," + typeToString(tt->getTypes()[i].second);
+			}
+			return res + "}";
+		}
+		default:
+			return "";
+		}
+	}
 }
