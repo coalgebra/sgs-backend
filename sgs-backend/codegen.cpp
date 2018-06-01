@@ -673,8 +673,13 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 			return globalEnv->getBindings()[glbVarDef->getName()] = temp;
 		} else {
 			const auto tTp = dynamic_cast<STupleType*>(tp);
-			return globalEnv->getBindings()[glbVarDef->getName()] = new GlobalVariable(tTp->toLLVMType(theContext, typeReference), false, GlobalValue::CommonLinkage,
-				ConstantAggregateZero::get(tTp->toLLVMType(theContext, typeReference)), glbVarDef->getName());
+			return globalEnv->getBindings()[glbVarDef->getName()] = 
+				new GlobalVariable(
+					*theModule,
+					tTp->toLLVMType(theContext, typeReference), 
+					false, 
+					GlobalValue::CommonLinkage,
+					ConstantAggregateZero::get(tTp->toLLVMType(theContext, typeReference)), glbVarDef->getName());
 		}
 	}
 	default: ;

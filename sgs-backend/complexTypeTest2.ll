@@ -76,7 +76,12 @@ source_filename = "wtf"
 
 %Fucker = type { i32, [10 x i8], i32 }
 
+@g1 = common global %Fucker zeroinitializer
+@g2.array = common global [10 x %Fucker] zeroinitializer
+@g2 = internal global %Fucker* getelementptr inbounds ([10 x %Fucker], [10 x %Fucker]* @g2.array, i32 0, i32 0)
 @"12345.str" = private constant [6 x i8] c"12345\00"
+@"432.str" = private constant [4 x i8] c"432\00"
+@abcde.str = private constant [6 x i8] c"abcde\00"
 
 define i32 @printFuckers(%Fucker*, i32) {
 entry:
@@ -98,6 +103,9 @@ entry:
 
 define i32 @main() {
 entry:
+  %array.temp8 = alloca i8*
+  %array.temp5 = alloca i8*
+  %array.temp1 = alloca i8*
   %array.temp = alloca i8*
   %fuckers.ptr = alloca %Fucker*
   %fuckers = alloca [10 x %Fucker]
@@ -110,7 +118,22 @@ entry:
   store i8* %1, i8** %array.temp
   %str.ptr = load i8*, i8** %array.temp
   %2 = call i8* @strcpy(i8* %str.ptr, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @"12345.str", i32 0, i32 0))
-  %load = load %Fucker*, %Fucker** %fuckers.ptr
-  %call.res = call i32 @printFuckers(%Fucker* %load, i32 0)
+  store i8* getelementptr inbounds (%Fucker, %Fucker* @g1, i32 0, i32 1, i32 0), i8** %array.temp1
+  %str.ptr2 = load i8*, i8** %array.temp1
+  %3 = call i8* @strcpy(i8* %str.ptr2, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @"432.str", i32 0, i32 0))
+  %array.load3 = load %Fucker*, %Fucker** @g2
+  %visit4 = getelementptr inbounds %Fucker, %Fucker* %array.load3, i32 2
+  %access.res6 = getelementptr inbounds %Fucker, %Fucker* %visit4, i32 0, i32 1
+  %4 = getelementptr inbounds [10 x i8], [10 x i8]* %access.res6, i32 0, i32 0
+  store i8* %4, i8** %array.temp5
+  %str.ptr7 = load i8*, i8** %array.temp5
+  %5 = call i8* @strcpy(i8* %str.ptr7, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @abcde.str, i32 0, i32 0))
+  %load = load %Fucker*, %Fucker** @g2
+  %call.res = call i32 @printFuckers(%Fucker* %load, i32 2)
+  store i8* getelementptr inbounds (%Fucker, %Fucker* @g1, i32 0, i32 1, i32 0), i8** %array.temp8
+  %load9 = load i8*, i8** %array.temp8
+  %call.res10 = call i32 @printStr(i8* %load9)
+  %load11 = load %Fucker*, %Fucker** %fuckers.ptr
+  %call.res12 = call i32 @printFuckers(%Fucker* %load11, i32 0)
   ret i32 0
 }

@@ -19,112 +19,112 @@
 using std::vector;
 using namespace llvm;
 using namespace sgs_backend;
-
-static LLVMContext TheContext;
-static IRBuilder<> Builder(TheContext);
+//
+// static LLVMContext TheContext;
+// static IRBuilder<> Builder(TheContext);
 // static Module TheModule("main", TheContext);
 
-void temp() {
-	std::unique_ptr<Module> TheModule = std::make_unique<Module>("main module", TheContext);
-	// FunctionType* fun_type =
-	// 	FunctionType::get(Type::getInt32Ty(TheContext), std::vector<Type*>(2, Type::getInt32Ty(TheContext)), false);
-	// //
-	// Function* fun = Function::Create(fun_type, GlobalValue::InternalLinkage, "function", TheModule.get());
-	// // // fun->print(outs(), nullptr);
-	// // // TheModule.print(outs(), nullptr);
-	// std::vector<Value*> args;
-	// int cnt = 0;
-	// std::string xx[] = { "a", "b" };
-	// for (auto& arg : fun->args()) { arg.setName(xx[cnt++]); args.push_back(&arg); }
- //
-	// BasicBlock* bb = BasicBlock::Create(TheContext, "entry", fun);
-	// Builder.SetInsertPoint(bb);
-	// Value* constant2 = Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 2));
-	// Value* constant48 = Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 48));
-	// Value* a = Builder.CreateAdd(constant2, constant48, "w");
-	// FunctionType* putchar_type =
-	// 	FunctionType::get(Type::getInt32Ty(TheContext), std::vector<Type*>(1, Type::getInt32Ty(TheContext)), false);
- //
-	// Function* fputchar = Function::Create(putchar_type, GlobalValue::ExternalLinkage, "putchar", TheModule.get());
-	// Value* b = Builder.CreateAdd(a, args[0], "x");
-	// Value* c = Builder.CreateAdd(b, args[1], "y");
-	// Value* z = Builder.CreateCall(fputchar, std::vector<Value*>(1, c), "z");
-	// Builder.CreateRet(z);
-	// // fun->print(outs(), nullptr);
-
-	Type* aryType = ArrayType::get(Type::getInt32Ty(TheContext), 10);
-
-	ConstantAggregateZero* const_array_2 = ConstantAggregateZero::get(aryType);
-	GlobalVariable* ga = new GlobalVariable(
-		*TheModule, 
-		Type::getInt32Ty(TheContext), 
-		false, 
-		GlobalValue::CommonLinkage,
-		Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0)),
-		// nullptr,
-		"a");
-	// theModule->getGlobalList();/
-	// TheModule->getGlobalList().push_back(ga);
-
-	Type* strType = ArrayType::get(Type::getInt8Ty(TheContext), 4);
-
-	Constant* constStr = ConstantDataArray::getString(TheContext, "123", true);
-
-	GlobalVariable* strb = new GlobalVariable(*TheModule, strType, true, GlobalValue::PrivateLinkage, constStr, "fucker");
-	// theModule.getstr
-	// Value* glbary = Builder.CreateGlobalString("fucker");
-	GlobalVariable* gb = new GlobalVariable(*TheModule, aryType, false, GlobalValue::CommonLinkage,
-		const_array_2
-		, "motherfucker");
-
-	auto* gx = ConstantExpr::getInBoundsGetElementPtr(
-		aryType, 
-		gb, vector<Constant*>({
-		Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0)) ,
-		Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0))
-		}));
-
-	GlobalVariable* gxx = new GlobalVariable(
-		*TheModule, 
-		Type::getInt32PtrTy(TheContext), 
-		false, 
-		GlobalValue::CommonLinkage, 
-		gx, 
-		"momfucker");
-
-	// Constant* gx = ConstantExpr::getInBoundsGetElementPtr()
-	// StructType* newType = StructType::create(TheContext, vector<Type*>(2, Type::getInt32Ty(TheContext)), "fucker", false);
- //
-	// Type* stPtr = PointerType::get(newType, 0);
- //
-	// FunctionType* fuckType =
-	// 	FunctionType::get(Type::getInt32PtrTy(TheContext), std::vector<Type*>(1, stPtr), false);
- //
-	// Function* fuck = Function::Create(fuckType, GlobalValue::InternalLinkage, "fuck", TheModule.get());
-	// BasicBlock* bb2 = BasicBlock::Create(TheContext, "entry", fuck);
-	// Value* fuckerA = (fuck->args().begin());
-	// fuckerA->setName("a");
-	// Builder.SetInsertPoint(bb2);
-	// Value* first = Builder.CreateStructGEP(newType, fuckerA, 0, "first");
-	// Value* valueOfFirst = Builder.CreateLoad(first, "first.value");
-	// Builder.CreateCall(fputchar, vector<Value*>(1, valueOfFirst));
-	// // Value* getStructPtr = Builder.create
-	// Value* getary = Builder.CreateGEP(gb, vector<Value*>(2, Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0))), "aryelm");
-	// Value* getaryvalue = Builder.CreateLoad(getary, "ary.value");
-	// // Builder.CreateCall(fputchar, vector<Value*>(1, getaryvalue));
-	// Builder.CreateRet(getary);
-
-
-
-	TheModule->print(outs(), nullptr);
-	// TheModule = llvm::make_unique<Module>("my cool jit", TheContext);
-
-	// Run the main "interpreter loop" now.
-	// MainLoop();
-
-	// Print out all of the generated code.
-	// TheModule.print(errs(), nullptr);
-}
+// void temp() {
+// 	std::unique_ptr<Module> TheModule = std::make_unique<Module>("main module", TheContext);
+// 	// FunctionType* fun_type =
+// 	// 	FunctionType::get(Type::getInt32Ty(TheContext), std::vector<Type*>(2, Type::getInt32Ty(TheContext)), false);
+// 	// //
+// 	// Function* fun = Function::Create(fun_type, GlobalValue::InternalLinkage, "function", TheModule.get());
+// 	// // // fun->print(outs(), nullptr);
+// 	// // // TheModule.print(outs(), nullptr);
+// 	// std::vector<Value*> args;
+// 	// int cnt = 0;
+// 	// std::string xx[] = { "a", "b" };
+// 	// for (auto& arg : fun->args()) { arg.setName(xx[cnt++]); args.push_back(&arg); }
+//  //
+// 	// BasicBlock* bb = BasicBlock::Create(TheContext, "entry", fun);
+// 	// Builder.SetInsertPoint(bb);
+// 	// Value* constant2 = Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 2));
+// 	// Value* constant48 = Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 48));
+// 	// Value* a = Builder.CreateAdd(constant2, constant48, "w");
+// 	// FunctionType* putchar_type =
+// 	// 	FunctionType::get(Type::getInt32Ty(TheContext), std::vector<Type*>(1, Type::getInt32Ty(TheContext)), false);
+//  //
+// 	// Function* fputchar = Function::Create(putchar_type, GlobalValue::ExternalLinkage, "putchar", TheModule.get());
+// 	// Value* b = Builder.CreateAdd(a, args[0], "x");
+// 	// Value* c = Builder.CreateAdd(b, args[1], "y");
+// 	// Value* z = Builder.CreateCall(fputchar, std::vector<Value*>(1, c), "z");
+// 	// Builder.CreateRet(z);
+// 	// // fun->print(outs(), nullptr);
+//
+// 	Type* aryType = ArrayType::get(Type::getInt32Ty(TheContext), 10);
+//
+// 	ConstantAggregateZero* const_array_2 = ConstantAggregateZero::get(aryType);
+// 	GlobalVariable* ga = new GlobalVariable(
+// 		*TheModule, 
+// 		Type::getInt32Ty(TheContext), 
+// 		false, 
+// 		GlobalValue::CommonLinkage,
+// 		Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0)),
+// 		// nullptr,
+// 		"a");
+// 	// theModule->getGlobalList();/
+// 	// TheModule->getGlobalList().push_back(ga);
+//
+// 	Type* strType = ArrayType::get(Type::getInt8Ty(TheContext), 4);
+//
+// 	Constant* constStr = ConstantDataArray::getString(TheContext, "123", true);
+//
+// 	GlobalVariable* strb = new GlobalVariable(*TheModule, strType, true, GlobalValue::PrivateLinkage, constStr, "fucker");
+// 	// theModule.getstr
+// 	// Value* glbary = Builder.CreateGlobalString("fucker");
+// 	GlobalVariable* gb = new GlobalVariable(*TheModule, aryType, false, GlobalValue::CommonLinkage,
+// 		const_array_2
+// 		, "motherfucker");
+//
+// 	auto* gx = ConstantExpr::getInBoundsGetElementPtr(
+// 		aryType, 
+// 		gb, vector<Constant*>({
+// 		Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0)) ,
+// 		Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0))
+// 		}));
+//
+// 	GlobalVariable* gxx = new GlobalVariable(
+// 		*TheModule, 
+// 		Type::getInt32PtrTy(TheContext), 
+// 		false, 
+// 		GlobalValue::CommonLinkage, 
+// 		gx, 
+// 		"momfucker");
+//
+// 	// Constant* gx = ConstantExpr::getInBoundsGetElementPtr()
+// 	// StructType* newType = StructType::create(TheContext, vector<Type*>(2, Type::getInt32Ty(TheContext)), "fucker", false);
+//  //
+// 	// Type* stPtr = PointerType::get(newType, 0);
+//  //
+// 	// FunctionType* fuckType =
+// 	// 	FunctionType::get(Type::getInt32PtrTy(TheContext), std::vector<Type*>(1, stPtr), false);
+//  //
+// 	// Function* fuck = Function::Create(fuckType, GlobalValue::InternalLinkage, "fuck", TheModule.get());
+// 	// BasicBlock* bb2 = BasicBlock::Create(TheContext, "entry", fuck);
+// 	// Value* fuckerA = (fuck->args().begin());
+// 	// fuckerA->setName("a");
+// 	// Builder.SetInsertPoint(bb2);
+// 	// Value* first = Builder.CreateStructGEP(newType, fuckerA, 0, "first");
+// 	// Value* valueOfFirst = Builder.CreateLoad(first, "first.value");
+// 	// Builder.CreateCall(fputchar, vector<Value*>(1, valueOfFirst));
+// 	// // Value* getStructPtr = Builder.create
+// 	// Value* getary = Builder.CreateGEP(gb, vector<Value*>(2, Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0))), "aryelm");
+// 	// Value* getaryvalue = Builder.CreateLoad(getary, "ary.value");
+// 	// // Builder.CreateCall(fputchar, vector<Value*>(1, getaryvalue));
+// 	// Builder.CreateRet(getary);
+//
+//
+//
+// 	TheModule->print(outs(), nullptr);
+// 	// TheModule = llvm::make_unique<Module>("my cool jit", TheContext);
+//
+// 	// Run the main "interpreter loop" now.
+// 	// MainLoop();
+//
+// 	// Print out all of the generated code.
+// 	// TheModule.print(errs(), nullptr);
+// }
 
 
 void simpleTest() {
@@ -451,6 +451,9 @@ void complexTypeTest2() {
 	 *		int c;
 	 *  };
 	 *  
+	 *  struct Fucker g1;
+	 *  struct Fucker g2[10];
+	 *  
 	 *  int printFucker(struct Fucker* a, int i) {
 	 *		return printStr(a[i].b);
 	 *  }
@@ -458,6 +461,10 @@ void complexTypeTest2() {
 	 *  int main() {
 	 *		struct Fucker fuckers[10];
 	 *		fuckers[0].b = "12345";
+	 *		g1.b = "432";
+	 *		g2[2].b = "abc";
+	 *		printFucker(g2, 2);
+	 *		printStr(g1.b);
 	 *		printFucker(fuckers, 0);
 	 *		return 0;
 	 *  }
@@ -473,15 +480,20 @@ void complexTypeTest2() {
 
 	code.push_back(new TypeDef(fuckerType, "Fucker"));
 
-	IdExp* a = new IdExp("a", arFuckerType);
-	IdExp* i = new IdExp("i", intType);
-
-	FuncProto* printFuckerProto = new FuncProto(intType, "printFuckers", {std::make_pair(arFuckerType, "a"), std::make_pair(intType, "i")});
-	code.push_back(new FuncDef(printFuckerProto,
-		new BlockStmt({
-			new ReturnStmt(new CallExp("printStr",
-				{new AccessExp(new VisitExp(a, i), "b") }, intType))
-		})));
+	code.push_back(new GlobalVarDef("g1", fuckerType));
+	 code.push_back(new GlobalVarDef("g2", arFuckerType));
+ 
+	 IdExp* a = new IdExp("a", arFuckerType);
+	 IdExp* i = new IdExp("i", intType);
+	 IdExp* g1 = new IdExp("g1", fuckerType);
+	 IdExp* g2 = new IdExp("g2", arFuckerType);
+ 
+	 FuncProto* printFuckerProto = new FuncProto(intType, "printFuckers", {std::make_pair(arFuckerType, "a"), std::make_pair(intType, "i")});
+	 code.push_back(new FuncDef(printFuckerProto,
+	 	new BlockStmt({
+	 		new ReturnStmt(new CallExp("printStr",
+	 			{new AccessExp(new VisitExp(a, i), "b") }, intType))
+	 	})));
 
 	FuncProto* mainProto = new FuncProto(intType, "main", {});
 	vector<Statement*> mainStmt;
@@ -489,7 +501,12 @@ void complexTypeTest2() {
 	IdExp* fuckers = new IdExp("fuckers", arFuckerType);
 	mainStmt.push_back(new AssignStmt(
 		new AccessExp(new VisitExp(fuckers, getLiteral(0)), "b"), new ConstString("12345")));
-	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", {fuckers, getLiteral(0)}, intType)));
+	mainStmt.push_back(new AssignStmt(new AccessExp(g1, "b"), new ConstString("432")));
+	mainStmt.push_back(new AssignStmt(
+		new AccessExp(new VisitExp(g2, getLiteral(2)), "b"), new ConstString("abcde")));
+	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { g2, getLiteral(2)}, intType)));
+	mainStmt.push_back(new ExpStmt(new CallExp("printStr", {new AccessExp(g1, "b")}, intType)));
+	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { fuckers, getLiteral(0) }, intType)));
 	mainStmt.push_back(new ReturnStmt(getLiteral(0)));
 	BlockStmt* mainBody = new BlockStmt(mainStmt);
 	code.push_back(new FuncDef(mainProto, mainBody));
