@@ -464,12 +464,12 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 		BasicBlock* merge = BasicBlock::Create(theContext, "if.merge");
 		builder.CreateCondBr(cond, taken, untaken);
 		builder.SetInsertPoint(taken);
-		stmtCodegen(ifs->getTaken(), env, cont, bk);
+		stmtCodegen(ifs->getPass(), env, cont, bk);
 		builder.CreateBr(merge);
 
 		fun->getBasicBlockList().push_back(untaken);
 		builder.SetInsertPoint(untaken);
-		stmtCodegen(ifs->getUntaken(), env, cont, bk);
+		stmtCodegen(ifs->getFail(), env, cont, bk);
 		const auto res = builder.CreateBr(merge);
 
 		fun->getBasicBlockList().push_back(merge);
@@ -486,7 +486,7 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 		builder.CreateBr(whileCond);
 		fun->getBasicBlockList().push_back(whileCond);
 		builder.SetInsertPoint(whileCond);
-		Value* cond = exprCodegen(wstmt->getCondition(), env);
+		Value* cond = exprCodegen(wstmt->getCond(), env);
 		builder.CreateCondBr(cond, whileBody, whileMerge);
 		fun->getBasicBlockList().push_back(whileBody);
 		builder.SetInsertPoint(whileBody);
@@ -499,8 +499,8 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 	case ST_RETURN: {
 		const auto ret = dynamic_cast<ReturnStmt*>(stmt);
 		Value* res;
-		if (ret->getExp()) {
-			const auto exp = exprCodegen(ret->getExp(), env);
+		if (ret->getRetVal()) {
+			const auto exp = exprCodegen(ret->getRetVal(), env);
 			if (exp->getType()->isPointerTy()) {
 				const auto res2 = builder.CreateLoad(exp, "ret.load");
 				res = builder.CreateRet(res2);

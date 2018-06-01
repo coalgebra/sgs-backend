@@ -7,6 +7,7 @@
 #include <string>
 #include "TypeSys.h"
 #include <map>
+#include <fstream>
 #include <llvm/IR/GlobalValue.h>
 
 namespace sgs_backend {
@@ -356,8 +357,8 @@ namespace sgs_backend {
 		}
 		void setTaken(Statement *t) { taken = t; }
 		void setUntaken(Statement *u) { untaken = u; }
-		Statement *getTaken() const { return taken; }
-		Statement *getUntaken() const { return untaken; }
+		Statement *getPass() const { return taken; }
+		Statement *getFail() const { return untaken; }
 		Expression* getCond() const { return condition; }
 	};
 
@@ -368,7 +369,7 @@ namespace sgs_backend {
 	public:
 		WhileStmt(Expression *cond, BlockStmt* body) : Statement(ST_WHILE), condition(cond), body(body) {}
 		BlockStmt *getBody() const { return body; }
-		Expression* getCondition() const { return condition; }
+		Expression* getCond() const { return condition; }
 	};
 
 	class VarDefStmt : public Statement {
@@ -392,7 +393,7 @@ namespace sgs_backend {
 		Expression* exp;
 	public:
 		explicit ReturnStmt(Expression* exp) : Statement(ST_RETURN), exp(exp) {}
-		Expression* getExp() const { return exp; }
+		Expression* getRetVal() const { return exp; }
 	};
 
 	class BreakStmt : public Statement {
@@ -407,4 +408,11 @@ namespace sgs_backend {
 
 	using Content = vector<AST*>;
 
+	string printType(SType* type, const string& name);
+	string printExpression(Expression* expr);
+	string printStatement(Statement* stmt);
+	string printAST(AST* ast);
+	static int printCounter;
+
+	void printContentInDot(const Content& content, const string& filename);
 }

@@ -130,7 +130,7 @@ std::unique_ptr<Module> TheModule = std::make_unique<Module>("main module", TheC
 void simpleTest() {
 	// builtinFuncInit();
 	/** C code : 
-	 *	int fucker(int a) {
+	 *	int main(int a) {
 	 *		int b = 1;
 	 *		bool c = false;
 	 *		b = b + a;
@@ -153,21 +153,19 @@ void simpleTest() {
 	vector<Statement*> stmts;
 	stmts.push_back(new VarDefStmt(context.getIntType(), getLiteral(1, context), "b"));
 	stmts.push_back(new VarDefStmt(boolType, getLiteral(false, context), "c"));
-	auto b = new IdExp("b", intType);
-	auto c = new IdExp("c", boolType);
-	auto a = new IdExp("a", intType);
-	stmts.push_back(new AssignStmt(b, new BinopExp(ADD, a, b, context)));
-	stmts.push_back(new AssignStmt(c, new BinopExp(GT, b, a, context)));
-	Statement* t1 = new AssignStmt(b, getLiteral(5, context));
-	Statement* t2 = new AssignStmt(b, getLiteral(3, context));
-	stmts.push_back(new IfStmt(c, t1, t2));
-	stmts.push_back(new ExpStmt(new CallExp("printNum", { b }, intType)));
-	stmts.push_back(new ReturnStmt(b));
+	stmts.push_back(new AssignStmt(new IdExp("b", intType), new BinopExp(ADD, new IdExp("a", intType), new IdExp("b", intType), context)));
+	stmts.push_back(new AssignStmt(new IdExp("c", boolType), new BinopExp(GT, new IdExp("b", intType), new IdExp("a", intType), context)));
+	Statement* t1 = new AssignStmt(new IdExp("b", intType), getLiteral(5, context));
+	Statement* t2 = new AssignStmt(new IdExp("b", intType), getLiteral(3, context));
+	stmts.push_back(new IfStmt(new IdExp("c", boolType), t1, t2));
+	stmts.push_back(new ExpStmt(new CallExp("printNum", { (new IdExp("b", intType)) }, intType)));
+	stmts.push_back(new ReturnStmt(new IdExp("b", intType)));
 	BlockStmt* body = new BlockStmt(stmts);
 	auto* funcDef = new FuncDef(proto, body);
 	// codegen(funcDef);
 	code.push_back(funcDef);
 	totalTranslation(code, "simpleTest.ll");
+	printContentInDot(code, "simpleTest.gv");
 }
 
 
@@ -491,17 +489,12 @@ void complexTypeTest2() {
  
   	code.push_back(new GlobalVarDef("g1", fuckerType));
   	 code.push_back(new GlobalVarDef("g2", arFuckerType));
-   
-  	 IdExp* a = new IdExp("a", arFuckerType);
-  	 IdExp* i = new IdExp("i", intType);
-  	 IdExp* g1 = new IdExp("g1", fuckerType);
-  	 IdExp* g2 = new IdExp("g2", arFuckerType);
-   
-  	 FuncProto* printFuckerProto = new FuncProto(intType, "printFuckers", {std::make_pair(arFuckerType, "a"), std::make_pair(intType, "i")});
+
+	FuncProto* printFuckerProto = new FuncProto(intType, "printFuckers", {std::make_pair(arFuckerType, "a"), std::make_pair(intType, "i")});
   	 code.push_back(new FuncDef(printFuckerProto,
   	 	new BlockStmt({
   	 		new ReturnStmt(new CallExp("printStr",
-  	 			{new AccessExp(new VisitExp(a, i), "b") }, intType))
+  	 			{new AccessExp(new VisitExp(new IdExp("a", arFuckerType), new IdExp("i", intType)), "b") }, intType))
   	 	})));
  
   	FuncProto* mainProto = new FuncProto(intType, "main", {});
@@ -510,27 +503,28 @@ void complexTypeTest2() {
   	IdExp* fuckers = new IdExp("fuckers", arFuckerType);
   	mainStmt.push_back(new AssignStmt(
   		new AccessExp(new VisitExp(fuckers, getLiteral(0, context)), "b"), new ConstString("12345")));
-  	mainStmt.push_back(new AssignStmt(new AccessExp(g1, "b"), new ConstString("432")));
+  	mainStmt.push_back(new AssignStmt(new AccessExp(new IdExp("g1", fuckerType), "b"), new ConstString("432")));
   	mainStmt.push_back(new AssignStmt(
-  		new AccessExp(new VisitExp(g2, getLiteral(2, context)), "b"), new ConstString("abcde")));
-  	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { g2, getLiteral(2, context)}, intType)));
-  	mainStmt.push_back(new ExpStmt(new CallExp("printStr", {new AccessExp(g1, "b")}, intType)));
+  		new AccessExp(new VisitExp(new IdExp("g2", arFuckerType), getLiteral(2, context)), "b"), new ConstString("abcde")));
+  	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { (new IdExp("g2", arFuckerType)), getLiteral(2, context)}, intType)));
+  	mainStmt.push_back(new ExpStmt(new CallExp("printStr", {new AccessExp(new IdExp("g1", fuckerType), "b")}, intType)));
   	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { fuckers, getLiteral(0, context) }, intType)));
   	mainStmt.push_back(new ReturnStmt(getLiteral(0, context)));
   	BlockStmt* mainBody = new BlockStmt(mainStmt);
   	code.push_back(new FuncDef(mainProto, mainBody));
  
   	totalTranslation(code, "complexTypeTest2.ll");
+	printContentInDot(code, "fucker.gv");
 }
 
 void test() {
  	simpleTest();
- 	floatIntTest();
- 	localArrayTest();
- 	glbVarDefTest();
- 	stringSimpleTest();
- 	simpleStructTest();
- 	complexTypeTest1();
+ 	// floatIntTest();
+ 	// localArrayTest();
+ 	// glbVarDefTest();
+ 	// stringSimpleTest();
+ 	// simpleStructTest();
+ 	// complexTypeTest1();
  	complexTypeTest2();
 }
 
