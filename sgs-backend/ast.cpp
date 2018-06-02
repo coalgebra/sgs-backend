@@ -240,7 +240,7 @@ std::string sgs_backend::printAST(AST* ast) {
 		res += to_string(printCounter) + " [label=\"" + temp->getName() + "\"]\n";
 		printCounter++;
 		res += addr + " -> " + to_string(printCounter) + " [label=\"type\"]\n";
-		printType(temp->getType(), to_string(printCounter));
+		res += printType(temp->getType(), to_string(printCounter));
 		return res;
 	}
 	case AT_STMT: {
@@ -283,9 +283,7 @@ std::string sgs_backend::printAST(AST* ast) {
 
 void sgs_backend::printContentInDot(const Content& content, const string& filename) {
 	printCounter = 0;
-	string res;
-	res = 
-"\
+    string res = "\
 digraph g {\n\
 node[shape = box, fontname = \"Fira Code Light\"]\n\
 edge[fontname = \"Fira Code Light\", splines = line]\n\

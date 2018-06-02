@@ -28,11 +28,12 @@ namespace sgs_backend {
 	class SType {
 		Types level;
 		friend class Context;
-		static void method() {
-			//
-		}
 	public:
-		explicit SType(Types level) : level(level) {}
+        SType(const SType&) = delete;
+        SType(SType&&) = delete;
+        SType& operator = (const SType&) = delete;
+        SType& operator = (SType&&) = delete;
+        explicit SType(Types level) : level(level) {}
 		virtual ~SType() = default;
 		Types getLevel() const { return level; }
 		virtual Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const {
@@ -103,10 +104,6 @@ namespace sgs_backend {
 			return nullptr;
 		}
 		Type* toLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const override {
-			// if (context.) {
-				
-			// }
-			// if(StructType::create())
 			if (typeReference.find(name) != typeReference.end()) {
 				return typeReference.find(name)->second;
 			}
@@ -141,9 +138,7 @@ namespace sgs_backend {
 		}
 		
 		void insert(const string& str, Value* val) {
-			// bindings[str] = val;
 			bindings[str] = val;
-			// bindings.insert_or_assign(str, val);
 		}
 
 		static Environment* derive(Environment* env) {

@@ -27,6 +27,21 @@ namespace sgs_backend {
 
 	class AST {
 	public:
+
+        AST(const AST& other) = delete;
+
+	    AST(AST&& other) noexcept
+	        : astType(other.astType) {}
+
+        AST& operator=(const AST& other) = delete;
+
+	    AST& operator=(AST&& other) noexcept {
+	        if (this == &other)
+	            return *this;
+	        astType = other.astType;
+	        return *this;
+	    }
+
 		AST_TYPE astType;
 		AST(AST_TYPE t) :astType(t) {}
 		virtual ~AST() = default;
@@ -288,17 +303,6 @@ namespace sgs_backend {
 		FunctionType* getLLVMType(LLVMContext& context, const map<string, Type*>& typeReference) const {
 			vector<Type*> res;
 			for (const auto& x : paramList) {
-				// Type* tp = x.first->toLLVMType(context);
-				// if (x.first->getLevel() == Types::BASIC_TYPE) {
-				// 	res.push_back(tp);
-				// } else {
-				// 	// const auto cont = dyn_cast<PointerType>(tp)->getElementType();
-				// 	// if (cont->isArrayTy()) {
-				// 		// res.push_back(PointerType::get(dyn_cast<ArrayType>(cont)->getElementType(), 0));
-				// 	// } else {
-				// 		// res.push_back(PointerType::get(tp, 0));
-				// 	// }
-				// }
 				res.push_back(getParamType(x.first, context, typeReference));
 			}
 			return FunctionType::get(returnType->toLLVMType(context, typeReference), res, false);

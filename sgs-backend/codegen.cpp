@@ -167,13 +167,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				return builder.CreateFAdd(lhs, rhs, "fadd.res");
 			}
 			if (lhs->getType()->isIntegerTy()) {
-				const auto tl = dyn_cast<IntegerType>(lhs->getType());
-				const auto tr = dyn_cast<IntegerType>(rhs->getType());
-				if (tl->getBitWidth() < tr->getBitWidth()) {
-					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
-				} else if (tl->getBitWidth() > tr->getBitWidth()) {
-					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
-				}
+                integerTypeExtension(lhs, rhs);
 				return builder.CreateAdd(lhs, rhs, "add.res");
 			}
 			return nullptr;
@@ -182,13 +176,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				return builder.CreateFSub(lhs, rhs, "fsub.res");
 			}
 			if (lhs->getType()->isIntegerTy()) {
-				const auto tl = dyn_cast<IntegerType>(lhs->getType());
-				const auto tr = dyn_cast<IntegerType>(rhs->getType());
-				if (tl->getBitWidth() < tr->getBitWidth()) {
-					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
-				} else if (tl->getBitWidth() > tr->getBitWidth()) {
-					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
-				}
+                integerTypeExtension(lhs, rhs);
 				return builder.CreateSub(lhs, rhs, "sub.res");
 			}
 			return nullptr;
@@ -197,14 +185,8 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				return builder.CreateFMul(lhs, rhs, "fmul.res");
 			}
 			if (lhs->getType()->isIntegerTy()) {
-				const auto tl = dyn_cast<IntegerType>(lhs->getType());
-				const auto tr = dyn_cast<IntegerType>(rhs->getType());
-				if (tl->getBitWidth() < tr->getBitWidth()) {
-					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
-				} else if (tl->getBitWidth() > tr->getBitWidth()) {
-					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
-				}
-				return builder.CreateMul(lhs, rhs, "mul.res");
+                integerTypeExtension(lhs, rhs);
+                return builder.CreateMul(lhs, rhs, "mul.res");
 			}
 			return nullptr;
 		case DIV:
@@ -212,14 +194,8 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				return builder.CreateFDiv(lhs, rhs, "fdiv.res");
 			}
 			if (lhs->getType()->isIntegerTy()) {
-				const auto tl = dyn_cast<IntegerType>(lhs->getType());
-				const auto tr = dyn_cast<IntegerType>(rhs->getType());
-				if (tl->getBitWidth() < tr->getBitWidth()) {
-					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
-				} else if (tl->getBitWidth() > tr->getBitWidth()) {
-					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
-				}
-				return builder.CreateExactSDiv(lhs, rhs, "div.res");
+                integerTypeExtension(lhs, rhs);
+                return builder.CreateExactSDiv(lhs, rhs, "div.res");
 			}
 			return nullptr;
 		case GT:
@@ -227,14 +203,8 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				return builder.CreateFCmp(CmpInst::Predicate::FCMP_OGT, lhs, rhs, "fgt.res");
 			}
 			if (lhs->getType()->isIntegerTy()) {
-				const auto tl = dyn_cast<IntegerType>(lhs->getType());
-				const auto tr = dyn_cast<IntegerType>(rhs->getType());
-				if (tl->getBitWidth() < tr->getBitWidth()) {
-					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
-				} else if (tl->getBitWidth() > tr->getBitWidth()) {
-					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
-				}
-				return builder.CreateICmp(CmpInst::Predicate::ICMP_SGT, lhs, rhs, "gt.res");
+                integerTypeExtension(lhs, rhs);
+                return builder.CreateICmp(CmpInst::Predicate::ICMP_SGT, lhs, rhs, "gt.res");
 			}
 			return nullptr;
 		case LT:
@@ -242,14 +212,8 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 				return builder.CreateFCmp(CmpInst::Predicate::FCMP_OLT, lhs, rhs, "flt.res");
 			}
 			if (lhs->getType()->isIntegerTy()) {
-				const auto tl = dyn_cast<IntegerType>(lhs->getType());
-				const auto tr = dyn_cast<IntegerType>(rhs->getType());
-				if (tl->getBitWidth() < tr->getBitWidth()) {
-					lhs = builder.CreateSExt(lhs, tr, "sext.temp");
-				} else if (tl->getBitWidth() > tr->getBitWidth()) {
-					rhs = builder.CreateSExt(rhs, tl, "sext.temp");
-				}
-				return builder.CreateICmp(CmpInst::Predicate::ICMP_SLT, lhs, rhs, "lt.res");
+                integerTypeExtension(lhs, rhs);
+                return builder.CreateICmp(CmpInst::Predicate::ICMP_SLT, lhs, rhs, "lt.res");
 			}
 			return nullptr;
 		default:
@@ -304,7 +268,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 		const auto callexp = dynamic_cast<CallExp*>(exp);
 		Function* fun = funcReference[callexp->getFunction()];
 		Type* funTy1 = dyn_cast<PointerType>(fun->getType())->getElementType();
-		FunctionType* funTy = dyn_cast<FunctionType>(funTy1);
+	    auto* funTy = dyn_cast<FunctionType>(funTy1);
 		vector<Value*> params;
 		int counter = 0;
 		for (auto&& x : callexp->getParam()) {
@@ -322,6 +286,7 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 					temp = builder.CreateSExt(temp, lt, "param.sext");
 				}
 			}
+            counter++;
 			params.push_back(temp);
 		}
 		return builder.CreateCall(fun, params, "call.res");
@@ -359,13 +324,11 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			 *  so we declare another pointer here, to replace the usage of b
 			 *  
 			 *  a.b[0] = 1; 
-			 *  
 			 *  ==>
-			 *  
 			 *  int* t = a.b;
 			 *  t[0] = 1;
 			 */
-			ArrayType* aryTy = dyn_cast<ArrayType>(resType);
+		    auto* aryTy = dyn_cast<ArrayType>(resType);
 			IRBuilder<> tempBuilder(&builder.GetInsertBlock()->getParent()->getEntryBlock(), builder.GetInsertBlock()->getParent()->getEntryBlock().begin());
 			Value* mid = tempBuilder.CreateAlloca(aryTy->getElementType()->getPointerTo(0), nullptr, "array.temp");
 			Value* res = builder.CreateInBoundsGEP(obj, {
@@ -377,18 +340,11 @@ Value* sgs_backend::exprCodegen(Expression* exp, Environment* env) {
 			builder.CreateStore(res, mid);
 			return mid;
 		} else {
-			// if (obj->getType()->isPointerTy()) {
-			// 	const auto* rt = dyn_cast<PointerType>(obj->getType());
-			// 	if (rt->getElementType()->isPointerTy()) {
-			// 		obj = builder.CreateLoad(obj, "load.res");
-			// 	}
-			// }
 			return builder.CreateInBoundsGEP(obj, {
 				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)),
 				Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, i))
 				}, "access.res");
 		}
-		// return builder.CreateStructGEP(resType->getPointerTo(0), obj, i, "access.res");
 	}
 	default:
 		std::cerr << "What the fuck??" << std::endl;
@@ -433,8 +389,8 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 		}
 		Type* type = dyn_cast<PointerType>(lhs->getType())->getElementType();
 		if (type->isIntegerTy() && rhs->getType()->isIntegerTy()) {
-			IntegerType* tr = dyn_cast<IntegerType>(rhs->getType());
-			IntegerType* tl = dyn_cast<IntegerType>(type);
+		    auto* tr = dyn_cast<IntegerType>(rhs->getType());
+		    auto* tl = dyn_cast<IntegerType>(type);
 			if (tr->getBitWidth() < tl->getBitWidth()) { // need sext
 				rhs = builder.CreateSExt(rhs, tl, "sext.temp");
 			} else if (tr->getBitWidth() > tl->getBitWidth()) { // need trunc
@@ -538,7 +494,6 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 		Type* type = vardef->getVarType()->toLLVMType(theContext, typeReference);
 		if (type->isArrayTy()) { // we shall use the array type with its element pointer
 			const auto* atype = dyn_cast<ArrayType>(type);
-			// builder.GetInsertBlock()->getParent()->getBasicBlockList().begin()->;
 			IRBuilder<> tempBuilder2(&builder.GetInsertBlock()->getParent()->getEntryBlock(), builder.GetInsertBlock()->getParent()->getEntryBlock().begin());
 			Value* res2 = tempBuilder2.CreateAlloca(PointerType::get(atype->getElementType(), 0), nullptr, vardef->getName() + ".ptr");
 			res = builder.CreateInBoundsGEP(res, { 
@@ -566,14 +521,7 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 	case AT_TYPEDEF:
 	{
 		const auto typeDef = dynamic_cast<TypeDef*>(ast);
-		// vector<Type*> res;
-		// for (auto && type : typeDef->getDecType()) {
-		// 	res.push_back(type.second->toLLVMType(context, typeReference));
-		// }
-		// return StructType::create(context, res, name);
 		typeReference[typeDef->getName()] = typeDef->getDecType()->toLLVMType(theContext, typeReference);
-		// theModule.inser
-		// StructType::create()
 		return nullptr;
 	}
 	case AT_STMT:
@@ -614,7 +562,7 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 		if (tp->getLevel() == Types::BASIC_TYPE) {
 			switch (dynamic_cast<SBasicType*>(tp)->getBasicType()) {
 			case BasicType::INTEGER: {
-				auto temp = new GlobalVariable(
+			    const auto temp = new GlobalVariable(
 					*theModule,
 					Type::getInt32Ty(theContext), 
 					false, 
@@ -625,7 +573,7 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 				return temp;
 			}
 			case BasicType::FLOAT: {
-				auto temp = new GlobalVariable(*theModule,
+			    const auto temp = new GlobalVariable(*theModule,
 					Type::getFloatTy(theContext), false, GlobalValue::CommonLinkage,
 					ConstantFP::get(Type::getFloatTy(theContext), 0.0), glbVarDef->getName());
 				globalEnv->insert(glbVarDef->getName(), temp);
@@ -662,8 +610,8 @@ Value* sgs_backend::stmtCodegen(Statement* stmt, Environment* env, BasicBlock* c
 					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0)) ,
 					Constant::getIntegerValue(Type::getInt32Ty(theContext), APInt(32, 0))
 					}));
-			
-			auto temp = new GlobalVariable(
+
+		    const auto temp = new GlobalVariable(
 				*theModule,
 				aryTp->getElementType()->toLLVMType(theContext, typeReference)->getPointerTo(0),
 				false, 

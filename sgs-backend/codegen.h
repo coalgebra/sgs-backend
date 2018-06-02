@@ -29,6 +29,16 @@ namespace sgs_backend {
 	Value* stmtCodegen(Statement* stmt, Environment* env, BasicBlock* cont, BasicBlock* bk);
 	Value* codegen(AST* ast);
 
+    inline void integerTypeExtension(Value*& lhs, Value*& rhs) {
+        const auto tl = dyn_cast<IntegerType>(lhs->getType());
+        const auto tr = dyn_cast<IntegerType>(rhs->getType());
+        if (tl->getBitWidth() < tr->getBitWidth()) {
+            lhs = builder.CreateSExt(lhs, tr, "sext.temp");
+        } else if (tl->getBitWidth() > tr->getBitWidth()) {
+            rhs = builder.CreateSExt(rhs, tl, "sext.temp");
+        }
+    }
+
 	void totalTranslation(const Content& cont, const string& filename);
 
 }

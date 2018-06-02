@@ -1,3 +1,4 @@
+#include "llvm/Support/CommandLine.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
@@ -55,22 +56,22 @@ std::unique_ptr<Module> TheModule = std::make_unique<Module>("main module", TheC
 	Type* aryType = ArrayType::get(Type::getInt32Ty(TheContext), 10);
 
 	ConstantAggregateZero* const_array_2 = ConstantAggregateZero::get(aryType);
-	GlobalVariable* ga = new GlobalVariable(
-		*TheModule, 
-		Type::getInt32Ty(TheContext), 
-		false, 
-		GlobalValue::CommonLinkage,
-		Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0)),
-		// nullptr,
-		"a");
+	// GlobalVariable* ga = new GlobalVariable(
+	// 	*TheModule, 
+	// 	Type::getInt32Ty(TheContext), 
+	// 	false, 
+	// 	GlobalValue::CommonLinkage,
+	// 	Constant::getIntegerValue(Type::getInt32Ty(TheContext), APInt(32, 0)),
+	// 	// nullptr,
+	// 	"a");
 	// theModule->getGlobalList();/
 	// TheModule->getGlobalList().push_back(ga);
 
 	Type* strType = ArrayType::get(Type::getInt8Ty(TheContext), 4);
 
-	Constant* constStr = ConstantDataArray::getString(TheContext, "123", true);
+	// Constant* constStr = ConstantDataArray::getString(TheContext, "123", true);
 
-	GlobalVariable* strb = new GlobalVariable(*TheModule, strType, true, GlobalValue::PrivateLinkage, constStr, "fucker");
+	// GlobalVariable* strb = new GlobalVariable(*TheModule, strType, true, GlobalValue::PrivateLinkage, constStr, "fucker");
 	// theModule.getstr
 	// Value* glbary = Builder.CreateGlobalString("fucker");
 	GlobalVariable* gb = new GlobalVariable(*TheModule, aryType, false, GlobalValue::CommonLinkage,
@@ -169,7 +170,7 @@ void simpleTest() {
 }
 
 
- void floatIntTest() {
+void floatIntTest() {
  	/*  int main() {
  	 *		int i = 1;
  	 *		float fact = 1;
@@ -207,10 +208,10 @@ void simpleTest() {
  	stmts.push_back(new ExpStmt(new CallExp("printFloat", { new IdExp("res", floatType) }, intType)));
  	stmts.push_back(new ReturnStmt(getLiteral(0, context)));
  	BlockStmt* block = new BlockStmt(stmts);
- 	FuncDef* func = new FuncDef(proto, block);
+    auto* func = new FuncDef(proto, block);
  	code.push_back(func);
  	totalTranslation(code, "floatInt.ll");
- }
+}
  
 void localArrayTest() {
   	/**
@@ -232,7 +233,7 @@ void localArrayTest() {
   	SType* aryType = context.getArrayType(intType, 10);
   	FuncProto* proto1 = new FuncProto(intType, "printFirst", {std::make_pair(context.getArrayType(intType, 10), "a")});
   	BlockStmt* block2 = new BlockStmt({ new ReturnStmt(new CallExp("printNum", { new VisitExp(new IdExp("a", aryType), getLiteral(0, context))}, intType))});
-  	FuncDef* printFirst = new FuncDef(proto1, block2);
+    auto* printFirst = new FuncDef(proto1, block2);
   	code.push_back(printFirst);
   	FuncProto* proto = new FuncProto(intType, "main", {});
   	vector<Statement*> stmts;
@@ -245,7 +246,7 @@ void localArrayTest() {
   	stmts.push_back(new ExpStmt(new CallExp("printFirst", { a }, intType)));
   	stmts.push_back(new ReturnStmt(getLiteral(0, context)));
   	BlockStmt* block = new BlockStmt(stmts);
-  	FuncDef* func = new FuncDef(proto, block);
+    auto* func = new FuncDef(proto, block);
   	code.push_back(func);
   	totalTranslation(code, "localArray.ll");
   }
@@ -500,15 +501,14 @@ void complexTypeTest2() {
   	FuncProto* mainProto = new FuncProto(intType, "main", {});
   	vector<Statement*> mainStmt;
   	mainStmt.push_back(new VarDefStmt(arFuckerType, nullptr, "fuckers"));
-  	IdExp* fuckers = new IdExp("fuckers", arFuckerType);
-  	mainStmt.push_back(new AssignStmt(
-  		new AccessExp(new VisitExp(fuckers, getLiteral(0, context)), "b"), new ConstString("12345")));
+	mainStmt.push_back(new AssignStmt(
+  		new AccessExp(new VisitExp(new IdExp("fuckers", arFuckerType), getLiteral(0, context)), "b"), new ConstString("12345")));
   	mainStmt.push_back(new AssignStmt(new AccessExp(new IdExp("g1", fuckerType), "b"), new ConstString("432")));
   	mainStmt.push_back(new AssignStmt(
   		new AccessExp(new VisitExp(new IdExp("g2", arFuckerType), getLiteral(2, context)), "b"), new ConstString("abcde")));
   	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { (new IdExp("g2", arFuckerType)), getLiteral(2, context)}, intType)));
   	mainStmt.push_back(new ExpStmt(new CallExp("printStr", {new AccessExp(new IdExp("g1", fuckerType), "b")}, intType)));
-  	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { fuckers, getLiteral(0, context) }, intType)));
+  	mainStmt.push_back(new ExpStmt(new CallExp("printFuckers", { (new IdExp("fuckers", arFuckerType)), getLiteral(0, context) }, intType)));
   	mainStmt.push_back(new ReturnStmt(getLiteral(0, context)));
   	BlockStmt* mainBody = new BlockStmt(mainStmt);
   	code.push_back(new FuncDef(mainProto, mainBody));
@@ -528,12 +528,14 @@ void test() {
  	complexTypeTest2();
 }
 
-int main() {
-	test();
+int main(int argc, char** argv) {
+	// test();
 	// temp();
 	// puts("hell world");
-	// std::cin >> n;
-	// n = n + 1;
+    std::cout << argc << std::endl;
+    int n;
+    std::cin >> n;
+	n = n + 1;
 	// simpleTest();
 	return 0;
 }
